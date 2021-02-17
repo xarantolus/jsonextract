@@ -38,7 +38,7 @@ func extract(text string, start int) json.RawMessage {
 	return nil
 }
 
-// ReaderObjects takes the given io.Reader and reads all possible JSON objects it can find in it
+// ReaderObjects takes the given io.Reader and reads all possible JSON objects it can find in it.
 // Assumes the stream to consist of utf8 bytes
 func ReaderObjects(reader io.Reader) (objects []json.RawMessage, err error) {
 	// Need to buffer in order to be able to unread
@@ -95,6 +95,7 @@ func ReaderObjects(reader io.Reader) (objects []json.RawMessage, err error) {
 	return
 }
 
+// resettableRuneBuffer allows reading from a buffer, then resetting certain parts
 type resettableRuneBuffer struct {
 	normalBuffer *bufio.Reader
 
@@ -103,6 +104,7 @@ type resettableRuneBuffer struct {
 	returnBuffer bytes.Buffer
 }
 
+// Read implements io.Reader
 func (s *resettableRuneBuffer) Read(p []byte) (n int, err error) {
 	if s.returnBuffer.Len() != 0 {
 		n, err = s.returnBuffer.Read(p)
@@ -121,6 +123,7 @@ func (s *resettableRuneBuffer) Read(p []byte) (n int, err error) {
 	return n, err2
 }
 
+// ReadRune reads exactly one rune
 func (s *resettableRuneBuffer) ReadRune() (r rune, size int, err error) {
 	r, size, err = s.returnBuffer.ReadRune()
 	if err != nil {
@@ -132,6 +135,7 @@ func (s *resettableRuneBuffer) ReadRune() (r rune, size int, err error) {
 	return
 }
 
+// UnreadRune unreads the last rune read with ReadRune
 func (s *resettableRuneBuffer) UnreadRune() (err error) {
 	s.bufBefore.UnreadRune()
 
@@ -143,9 +147,12 @@ func (s *resettableRuneBuffer) UnreadRune() (err error) {
 	return s.normalBuffer.UnreadRune()
 }
 
+// ReturnAndSkipOne returns the buffer to the last reset (or initial) from an outside perspective,
+// except that it skips one rune from the underlying stream
 func (s *resettableRuneBuffer) ReturnAndSkipOne() (err error) {
 	s.returnBuffer = s.bufBefore
 
+	// Skip one rune
 	_, _, err = s.returnBuffer.ReadRune()
 
 	s.bufBefore = bytes.Buffer{}
@@ -153,6 +160,8 @@ func (s *resettableRuneBuffer) ReturnAndSkipOne() (err error) {
 	return
 }
 
+// ReturnAndSkip returns the buffer to the last reset (or initial) from an outside perspective,
+// except that it skips `offset` bytes from the input
 func (s *resettableRuneBuffer) ReturnAndSkip(offset int) (err error) {
 	s.returnBuffer = s.bufBefore
 
