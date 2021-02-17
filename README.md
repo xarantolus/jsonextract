@@ -98,5 +98,11 @@ results in
 * After passing the `io.Reader` to functions of this package, you should no longer use it afterwards. It might be read to the end, but in cases of stopping (using [`ErrStop`](https://pkg.go.dev/github.com/xarantolus/jsonextract#ErrStop)) some data might remain in the reader.
 * When extracting objects from JavaScript files, you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indicies being used in the script. You have to filter these out yourself.
 
+### Changelog
+* **v1.1.0**
+  * Now supports anything that *looks like* JSON, which also includes JavaScript object declarations
+* **v1.0.0**
+  * Initial version, supports only JSON
+
 ### [License](LICENSE)
 This is free as in freedom software. Do whatever you like with it.
