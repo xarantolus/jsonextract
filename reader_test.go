@@ -205,4 +205,12 @@ var testData = []struct {
 			[]byte(`{}`),
 		},
 	},
+	{
+		`<script>
+    loadScript('/static/js/sidenav.js', {type: 'module', async: true, defer: true})
+  </script>`,
+		[]json.RawMessage{
+			[]byte(`{"type":"module","async":true,"defer":true}`),
+		},
+	},
 }

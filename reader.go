@@ -263,6 +263,26 @@ loop:
 				err = fmt.Errorf("unexpected token %q in JS value", string(text))
 				break loop
 			}
+		case js.StringToken:
+			if text[0] == '"' {
+				buf.Write(text)
+				continue
+			}
+
+			// Most likely a single quoted string
+			var s string
+			err = json.Unmarshal(text, &s)
+			if err != nil {
+				break loop
+			}
+
+			quoted, merr := json.Marshal(s)
+			if err != nil {
+				err = merr
+				break loop
+			}
+
+			buf.Write(quoted)
 		default:
 			buf.Write(text)
 		}
