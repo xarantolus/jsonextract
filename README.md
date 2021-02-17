@@ -1,3 +1,4 @@
+![Tests](https://github.com/xarantolus/jsonextract/workflows/Tests/badge.svg) [![Go Reference](https://pkg.go.dev/badge/github.com/xarantolus/jsonextract.svg)](https://pkg.go.dev/github.com/xarantolus/jsonextract)
 # jsonextract
 `jsonextract` is a Go library for extracting JSON objects from any source. It can be used for data extraction tasks like web scraping.
 
@@ -58,6 +59,9 @@ The [string example](examples/string/main.go) shows how to use the package to qu
 The [`stackoverflow-chart` example](examples/stackoverflow-chart/main.go) shows how to extract the reputation chart data of a StackOverflow user. Extracted data is then used to draw the same chart using Go:
 
 ![Comparing chart from StackOverflow and the scraped and drawn result](.github/img/comparison-stackoverflow.png)
+
+### Notes
+After passing the `io.Reader` to functions of this package, you should no longer use it afterwards. It might be read to the end, but in cases of stopping (using `ErrStop`) some data might remain in the reader.
 
 
 ### [License](LICENSE)
