@@ -82,7 +82,7 @@ This means that text like the following, which is definitely not valid JSON, can
 	// Mixing normal and quotes keys is possible 
 	"obj": {
 		"quoted": 325,
-		unquoted: "test"
+		unquoted: 'test'
 	}
 }
 ```
@@ -99,6 +99,8 @@ results in
 * When extracting objects from JavaScript files, you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indicies being used in the script. You have to filter these out yourself.
 
 ### Changelog
+* **v1.1.2**
+  * Also support JS template strings
 * **v1.1.1**
   * Also turn single-quoted strings into valid JSON
 * **v1.1.0**

@@ -8,6 +8,7 @@ import (
 )
 
 var test = `This text contains the following JSON object from https://httpbin.org/json: {
+	a: true,
   "slideshow": {
     "author": "Yours Truly", 
     "date": "date of publication", 
@@ -40,7 +41,7 @@ The parser could be confused by [ opening { brackets, but it should notice that 
 	// Mixing normal and quotes keys is possible 
 	"obj": {
 		"quoted": 325,
-		unquoted: "test"
+		unquoted: 'test'
 	}
 }
 `

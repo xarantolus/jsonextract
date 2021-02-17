@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"strconv"
+	"strings"
 
 	"github.com/tdewolff/parse/js"
 )
@@ -183,6 +184,15 @@ func (s *resettableRuneBuffer) ReturnAndSkipOne() (err error) {
 	return
 }
 
+var singleQuoteReplacer = strings.NewReplacer(
+	// Replace single quotes with double
+	"'", "\"",
+	// Escape quotes from before
+	"\"", "\\\"",
+	// unescape single quotes from before
+	"\\'", "'",
+)
+
 // ReturnAndSkip returns the buffer to the last reset (or initial) from an outside perspective,
 // except that it skips `offset` bytes from the input
 func (s *resettableRuneBuffer) ReturnAndSkip(offset int) (err error) {
@@ -195,6 +205,12 @@ func (s *resettableRuneBuffer) ReturnAndSkip(offset int) (err error) {
 	s.bufBefore = bytes.Buffer{}
 
 	return
+}
+
+var jsIdentifiers = map[string]bool{
+	"true":  true,
+	"false": true,
+	"null":  true,
 }
 
 // readJSObject converts the input data from `r` to JSON if possible.
@@ -233,8 +249,12 @@ loop:
 		case js.SingleLineCommentToken, js.MultiLineCommentToken, js.WhitespaceToken, js.LineTerminatorToken:
 			// Ignore tokens that are not needed for JSON
 		case js.IdentifierToken:
-			// Quote keys in maps
-			buf.Write([]byte(strconv.Quote(string(text))))
+			// Quote keys/values, except if they are special
+			if jsIdentifiers[string(text)] {
+				buf.Write(text)
+			} else {
+				buf.Write([]byte(strconv.Quote(string(text))))
+			}
 		case js.PunctuatorToken:
 			if len(text) > 1 {
 				err = fmt.Errorf("unexpected token %q in JS value", string(text))
@@ -264,25 +284,24 @@ loop:
 				break loop
 			}
 		case js.StringToken:
-			if text[0] == '"' {
-				buf.Write(text)
+			// Special quotes must be handled
+			if text[0] == '\'' {
+				buf.WriteString(singleQuoteReplacer.Replace(string(text)))
 				continue
 			}
 
-			// Most likely a single quoted string
-			var s string
-			err = json.Unmarshal(text, &s)
-			if err != nil {
-				break loop
-			}
+			// This is either a constant a normal string
+			buf.Write(text)
+		case js.TemplateToken:
+			var toEscape = text[1 : len(text)-1]
 
-			quoted, merr := json.Marshal(s)
+			data, merr := json.Marshal(string(toEscape))
 			if err != nil {
 				err = merr
 				break loop
 			}
 
-			buf.Write(quoted)
+			buf.Write(data)
 		default:
 			buf.Write(text)
 		}
