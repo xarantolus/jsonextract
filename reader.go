@@ -209,7 +209,7 @@ func (s *resettableRuneBuffer) ReadRune() (r rune, size int, err error) {
 
 // UnreadRune unreads the last rune read with ReadRune
 func (s *resettableRuneBuffer) UnreadRune() (err error) {
-	s.bufBefore.UnreadRune()
+	_ = s.bufBefore.UnreadRune()
 
 	err = s.returnBuffer.UnreadRune()
 	if err == nil {
