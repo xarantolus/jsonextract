@@ -3,10 +3,11 @@ package jsonextract
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 )
 
-func TestString(t *testing.T) {
+func TestReader(t *testing.T) {
 	tests := []struct {
 		arg  string
 		want []json.RawMessage
@@ -176,7 +177,7 @@ func TestString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(t.Name(), func(t *testing.T) {
-			if gotExtracted := StringObjects(tt.arg); !reflect.DeepEqual(gotExtracted, tt.want) {
+			if gotExtracted, _ := ReaderObjects(strings.NewReader(tt.arg)); !reflect.DeepEqual(gotExtracted, tt.want) {
 				t.Errorf("String() = %v, want %v", convert(gotExtracted), convert(tt.want))
 			}
 		})

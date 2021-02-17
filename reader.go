@@ -4,39 +4,14 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
-	"strings"
 )
 
 const (
 	openObject = '{'
 	openArray  = '['
 )
-
-// StringObjects takes the given String and extracts all valid JSON objects / Arrays it can find
-func StringObjects(data string) (extracted []json.RawMessage) {
-	// Reader only returns errors if reading failed, which is not possible here
-	extracted, _ = ReaderObjects(strings.NewReader(data))
-	return
-}
-
-func extract(text string, start int) json.RawMessage {
-	msg := json.RawMessage{}
-
-	err := json.Unmarshal([]byte(text[start:]), &msg)
-
-	if err == nil {
-		return msg
-	}
-
-	if syerr, ok := err.(*json.SyntaxError); ok {
-		fmt.Println(syerr.Offset)
-	}
-
-	return nil
-}
 
 // ReaderObjects takes the given io.Reader and reads all possible JSON objects it can find in it.
 // Assumes the stream to consist of utf8 bytes
