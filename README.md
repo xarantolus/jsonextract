@@ -63,6 +63,14 @@ The [`stackoverflow-chart` example](examples/stackoverflow-chart/main.go) shows 
 ### Notes
 After passing the `io.Reader` to functions of this package, you should no longer use it afterwards. It might be read to the end, but in cases of stopping (using `ErrStop`) some data might remain in the reader.
 
+Another limitation to note is that this package supports extracting JSON, but not other JavaScript notation. This means that objects like the following would not be recognized: 
+```js
+{
+	key: "value",
+	num: 30.5
+}
+```
+
 
 ### [License](LICENSE)
 This is free as in freedom software. Do whatever you like with it.
