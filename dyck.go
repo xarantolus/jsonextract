@@ -4,11 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"strings"
-	"unicode/utf8"
 )
 
 const (
@@ -43,7 +42,7 @@ func extract(text string, start int) json.RawMessage {
 // Assumes the stream to consist of utf8 bytes
 func ReaderObjects(reader io.Reader) (objects []json.RawMessage, err error) {
 	// Need to buffer in order to be able to unread
-	buffered := prependableBuffer{
+	buffered := resettableRuneBuffer{
 		normalBuffer: bufio.NewReader(reader),
 	}
 
@@ -51,136 +50,115 @@ func ReaderObjects(reader io.Reader) (objects []json.RawMessage, err error) {
 	// If singleStepper wasn't there, the decoder would load too much
 	// data in its internal buffer, which would destroy the logic in the
 	// loop, as in it would read further than the JSON object
-	stepper := &singleStepper{r: buffered}
-	dec := json.NewDecoder(stepper)
+	// stepper := &singleStepper{r: buffered}
 
 	for {
-		// stepper.Throwaway()
-
-		// Read every rune in our buffered stream
 		r, _, err := buffered.ReadRune()
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				// We are at the end of the reader
-				return objects, nil
-			}
-			return nil, err
+			break
 		}
 
-		// If we find any opening, we check if it continues with valid JSON data
-		if r == openObject || r == openArray {
-			// Before decoding, we step back one step to
-			// make sure the decoder will get the opening brace
-			err = buffered.UnreadRune() // TODO: Does this unread correctly?
+		if r == openArray || r == openObject {
+
+			err = buffered.UnreadRune()
 			if err != nil {
-				return nil, err
+				break
 			}
 
-			// we decode to json.RawMessage
-			var msg = json.RawMessage{}
+			buffered.bufBefore.Reset()
 
-			err = dec.Decode(&msg)
+			var msg json.RawMessage
+
+			err = json.NewDecoder(&buffered).Decode(&msg)
 			if err != nil {
-				var prepend = stepper.Data(1)
+				err = buffered.ReturnAndSkipOne()
+				if err != nil {
+					break
+				}
 
-				buffered.Prepend(prepend)
 				continue
 			}
 
-			objects = append(objects, json.RawMessage(msg))
-			stepper.Throwaway()
+			err = buffered.ReturnAndSkip(len(msg))
+			if err != nil {
+				break
+			}
+
+			objects = append(objects, msg)
 		}
 	}
+
+	if err == io.EOF {
+		err = nil
+	}
+
+	return
 }
 
-type prependableBuffer struct {
+type resettableRuneBuffer struct {
+	normalBuffer *bufio.Reader
+
 	bufBefore bytes.Buffer
 
-	normalBuffer *bufio.Reader
+	returnBuffer bytes.Buffer
 }
 
-func (s *prependableBuffer) Read(p []byte) (n int, err error) {
-	if s.bufBefore.Len() != 0 {
-		n, err = s.bufBefore.Read(p)
+func (s *resettableRuneBuffer) Read(p []byte) (n int, err error) {
+	if s.returnBuffer.Len() != 0 {
+		n, err = s.returnBuffer.Read(p)
 		if err == io.EOF {
 			err = nil
 		}
+
+		s.bufBefore.Write(p[:n])
 	}
 
 	n2, err2 := s.normalBuffer.Read(p[n:])
 
-	return n + n2, err2
+	s.bufBefore.Write(p[n : n+n2])
+	n += n2
+
+	return n, err2
 }
 
-func (b *prependableBuffer) ReadRune() (r rune, size int, err error) {
-	r, size, err = b.bufBefore.ReadRune()
-	if err == nil {
-		return
-	}
-	return b.normalBuffer.ReadRune()
-}
-
-func (b *prependableBuffer) UnreadRune() (err error) {
-	err = b.bufBefore.UnreadRune()
-	if err == nil {
-		return
-	}
-
-	return b.normalBuffer.UnreadRune()
-}
-
-func (s *prependableBuffer) Prepend(p []byte) {
-	if s.bufBefore.Len() == 0 {
-		// cannot fail
-		_, _ = s.bufBefore.Write(p)
-		return
-	}
-
-	data := append(p, s.bufBefore.Bytes()...)
-	s.bufBefore.Reset()
-
-	s.bufBefore.Write(data)
-	return
-}
-
-type singleStepper struct {
-	r prependableBuffer
-
-	buf bytes.Buffer
-}
-
-func (s *singleStepper) Read(p []byte) (n int, err error) {
-	next, size, err := s.r.normalBuffer.ReadRune()
+func (s *resettableRuneBuffer) ReadRune() (r rune, size int, err error) {
+	r, size, err = s.returnBuffer.ReadRune()
 	if err != nil {
-		return
+		r, size, err = s.normalBuffer.ReadRune()
 	}
 
-	if len(p) < size {
-		return 0, nil
-	}
-
-	written := utf8.EncodeRune(p, next)
-
-	// keep the rune
-	s.buf.Write(p[:written])
-
-	return written, nil
-}
-
-func (s *singleStepper) Data(offset int) (bytes []byte) {
-	len := s.buf.Len()
-	if len < offset {
-		return
-	}
-
-	bytes = make([]byte, len-offset)
-	copy(bytes, s.buf.Bytes()[offset:])
-
-	s.Throwaway()
+	s.bufBefore.WriteRune(r)
 
 	return
 }
 
-func (s *singleStepper) Throwaway() {
-	s.buf.Reset()
+func (s *resettableRuneBuffer) UnreadRune() (err error) {
+	s.bufBefore.UnreadRune()
+
+	err = s.returnBuffer.UnreadRune()
+	if err == nil {
+		return
+	}
+
+	return s.normalBuffer.UnreadRune()
+}
+
+func (s *resettableRuneBuffer) ReturnAndSkipOne() (err error) {
+	s.returnBuffer = s.bufBefore
+
+	_, _, err = s.returnBuffer.ReadRune()
+
+	s.bufBefore = bytes.Buffer{}
+
+	return
+}
+
+func (s *resettableRuneBuffer) ReturnAndSkip(offset int) (err error) {
+	s.returnBuffer = s.bufBefore
+
+	_, err = io.CopyN(ioutil.Discard, s, int64(offset))
+
+	s.bufBefore = bytes.Buffer{}
+
+	return
 }

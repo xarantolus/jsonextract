@@ -22,6 +22,17 @@ func TestString(t *testing.T) {
 			},
 		},
 		{
+			`{{{{{ "test": "a" }} }}}}}}{ {}text[] in {}between{}`,
+			[]json.RawMessage{
+				[]byte(`{ "test": "a" }`),
+				[]byte(`{}`),
+				[]byte(`[]`),
+				[]byte(`{}`),
+				[]byte(`{}`),
+			},
+		},
+
+		{
 			`{}some {}text[] in {}between{}`,
 			[]json.RawMessage{
 				[]byte(`{}`),
@@ -164,7 +175,7 @@ func TestString(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(t.Name()  , func(t *testing.T) {
+		t.Run(t.Name(), func(t *testing.T) {
 			if gotExtracted := StringObjects(tt.arg); !reflect.DeepEqual(gotExtracted, tt.want) {
 				t.Errorf("String() = %v, want %v", convert(gotExtracted), convert(tt.want))
 			}
