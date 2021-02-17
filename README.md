@@ -1,7 +1,8 @@
 [![Tests](https://github.com/xarantolus/jsonextract/workflows/Tests/badge.svg)](https://github.com/xarantolus/jsonextract/actions?query=workflow%3ATests) [![Go Reference](https://pkg.go.dev/badge/github.com/xarantolus/jsonextract.svg)](https://pkg.go.dev/github.com/xarantolus/jsonextract)
 # jsonextract
-`jsonextract` is a Go library for extracting JSON objects from any source. It can be used for data extraction tasks like web scraping.
+`jsonextract` is a Go library for extracting JSON and JavaScript objects from any source. It can be used for data extraction tasks like web scraping.
 
+If any text looks like a JavaScript object or is close looking like JSON, it will be converted to it.
 
 ### Examples
 Here is an example program that extracts all JSON objects from a file and prints them to the console:
@@ -26,6 +27,11 @@ func main() {
 
 	// Print all JSON objects and arrays found in file.html
 	err = jsonextract.Reader(file, func(b []byte) error {
+		// Here you can parse the JSON data using a normal parser, e.g. from "encoding/json"
+		// If you want to continue with the next object, return nil
+		// To stop after this object, you can return jsonextract.ErrStop
+
+		// But here, we just print the data
 		fmt.Println(string(b))
 
 		return nil
@@ -60,17 +66,37 @@ The [`stackoverflow-chart` example](examples/stackoverflow-chart/main.go) shows 
 
 ![Comparing chart from StackOverflow and the scraped and drawn result](.github/img/comparison-stackoverflow.png)
 
-### Notes
-After passing the `io.Reader` to functions of this package, you should no longer use it afterwards. It might be read to the end, but in cases of stopping (using `ErrStop`) some data might remain in the reader.
+### Supported notations
+This software supports not just extracting normal JSON, but also other JavaScript notation.
 
-Another limitation to note is that this package supports extracting JSON, but not other JavaScript notation. This means that objects like the following would not be recognized: 
+This means that text like the following, which is definitely not valid JSON, can also be extracted to an object:
+
 ```js
 {
+	// Keys without quotes are valid in JavaScript, but not in JSON
 	key: "value",
-	num: 30.5
+	num: 295.2,
+
+	// Comments are removed while processing
+
+	// Mixing normal and quotes keys is possible 
+	"obj": {
+		"quoted": 325,
+		unquoted: "test"
+	}
 }
 ```
 
+results in 
+
+```json
+{"key":"value","num":295.2,"obj":{"quoted":325,"unquoted":"test"}}
+```
+
+
+### Notes
+* After passing the `io.Reader` to functions of this package, you should no longer use it afterwards. It might be read to the end, but in cases of stopping (using [`ErrStop`](https://pkg.go.dev/github.com/xarantolus/jsonextract#ErrStop)) some data might remain in the reader.
+* When extracting objects from JavaScript files, you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indicies being used in the script. You have to filter these out yourself.
 
 ### [License](LICENSE)
 This is free as in freedom software. Do whatever you like with it.

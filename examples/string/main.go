@@ -30,6 +30,19 @@ var test = `This text contains the following JSON object from https://httpbin.or
 }
 That's it.
 The parser could be confused by [ opening { brackets, but it should notice that they shouldn't be included.
+{
+	// Keys without quotes are valid in JavaScript, but not in JSON
+	key: "value",
+	num: 295.2,
+
+	// Comments are removed while processing
+
+	// Mixing normal and quotes keys is possible 
+	"obj": {
+		"quoted": 325,
+		unquoted: "test"
+	}
+}
 `
 
 func main() {

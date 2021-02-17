@@ -34,7 +34,7 @@ func main() {
 	err = jsonextract.Reader(resp.Body, func(b []byte) error {
 		// Try to unmarshal
 		err := json.Unmarshal(b, &yValues)
-		if err == nil {
+		if err == nil && len(yValues) > 0 {
 			// If it was successful, we stop parsing
 			return jsonextract.ErrStop
 		}
