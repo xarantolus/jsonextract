@@ -1,4 +1,4 @@
-![Tests](https://github.com/xarantolus/jsonextract/workflows/Tests/badge.svg) [![Go Reference](https://pkg.go.dev/badge/github.com/xarantolus/jsonextract.svg)](https://pkg.go.dev/github.com/xarantolus/jsonextract)
+[![Tests](https://github.com/xarantolus/jsonextract/workflows/Tests/badge.svg)](https://github.com/xarantolus/jsonextract/actions?query=workflow%3ATests) [![Go Reference](https://pkg.go.dev/badge/github.com/xarantolus/jsonextract.svg)](https://pkg.go.dev/github.com/xarantolus/jsonextract)
 # jsonextract
 `jsonextract` is a Go library for extracting JSON objects from any source. It can be used for data extraction tasks like web scraping.
 
