@@ -16,6 +16,7 @@ func main() {
 	}
 
 	// Download a StackOverflow user profile
+	// The profile page only contains the chart data if it ends with "?tab=topactivity"
 	resp, err := c.Get("https://stackoverflow.com/users/5728357/xarantolus?tab=topactivity")
 	if err != nil {
 		panic(err)
