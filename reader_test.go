@@ -1,72 +1,140 @@
 package jsonextract
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
 )
 
 func TestReader(t *testing.T) {
-	tests := []struct {
-		arg  string
-		want []json.RawMessage
-	}{
-		{
-			`{{ "test": "a" } {}text[] in {}between{}`,
-			[]json.RawMessage{
-				[]byte(`{ "test": "a" }`),
-				[]byte(`{}`),
-				[]byte(`[]`),
-				[]byte(`{}`),
-				[]byte(`{}`),
-			},
-		},
-		{
-			`{{{{{ "test": "a" }} }}}}}}{ {}text[] in {}between{}`,
-			[]json.RawMessage{
-				[]byte(`{ "test": "a" }`),
-				[]byte(`{}`),
-				[]byte(`[]`),
-				[]byte(`{}`),
-				[]byte(`{}`),
-			},
-		},
+	for _, tt := range testData {
+		t.Run(t.Name(), func(t *testing.T) {
+			if gotExtracted, _ := ReaderObjects(strings.NewReader(tt.arg)); !reflect.DeepEqual(gotExtracted, tt.want) {
+				t.Errorf("ReaderObjects() = %v, want %v", convert(gotExtracted), convert(tt.want))
+			}
+		})
+	}
+}
 
-		{
-			`{}some {}text[] in {}between{}`,
-			[]json.RawMessage{
-				[]byte(`{}`),
-				[]byte(`{}`),
-				[]byte(`[]`),
-				[]byte(`{}`),
-				[]byte(`{}`),
-			},
+func TestCallback(t *testing.T) {
+	// Test all from testData
+	for _, tt := range testData {
+		t.Run(t.Name(), func(t *testing.T) {
+			var calls int
+
+			err := Reader(strings.NewReader(tt.arg), func(b []byte) error {
+				if !bytes.Equal(b, tt.want[calls]) {
+					t.Errorf("Reader() callback %d = %q, want %q", calls, string(b), string(tt.want[calls]))
+				}
+
+				calls++
+
+				return nil
+			})
+			if err != nil {
+				panic(err)
+			}
+		})
+	}
+
+	t.Run("callback returns error", func(t *testing.T) {
+		var testErr = errors.New("test test")
+
+		err := Reader(strings.NewReader(`{}`), func(b []byte) error {
+			return testErr
+		})
+		if err != testErr {
+			t.Errorf("Reader() doesn't return error returned by callback")
+		}
+	})
+
+	t.Run("stop callback using ErrStop", func(t *testing.T) {
+		var calls int
+		err := Reader(strings.NewReader(`{}{}{}{}{}`), func(b []byte) error {
+			calls++
+			if calls == 2 {
+				return ErrStop
+			}
+			return nil
+		})
+		if err != nil {
+			t.Errorf("Reader() doesn't return nil when explicitly stopped")
+		}
+		if calls != 2 {
+			t.Errorf("Reader() calls callback %d times instead of the expected 2 times", calls)
+		}
+	})
+}
+
+func convert(m []json.RawMessage) (msgs []string) {
+	for _, v := range m {
+		msgs = append(msgs, string(v))
+	}
+	return
+}
+
+var testData = []struct {
+	arg  string
+	want []json.RawMessage
+}{
+	{
+		`{{ "test": "a" } {}text[] in {}between{}`,
+		[]json.RawMessage{
+			[]byte(`{ "test": "a" }`),
+			[]byte(`{}`),
+			[]byte(`[]`),
+			[]byte(`{}`),
+			[]byte(`{}`),
 		},
-		{
-			`{}{}[]{}{}`,
-			[]json.RawMessage{
-				[]byte(`{}`),
-				[]byte(`{}`),
-				[]byte(`[]`),
-				[]byte(`{}`),
-				[]byte(`{}`),
-			},
+	},
+	{
+		`{{{{{ "test": "a" }} }}}}}}{ {}text[] in {}between{}`,
+		[]json.RawMessage{
+			[]byte(`{ "test": "a" }`),
+			[]byte(`{}`),
+			[]byte(`[]`),
+			[]byte(`{}`),
+			[]byte(`{}`),
 		},
-		{
-			`{"a": "b"}`,
-			[]json.RawMessage{[]byte(`{"a": "b"}`)},
+	},
+
+	{
+		`{}some {}text[] in {}between{}`,
+		[]json.RawMessage{
+			[]byte(`{}`),
+			[]byte(`{}`),
+			[]byte(`[]`),
+			[]byte(`{}`),
+			[]byte(`{}`),
 		},
-		{
-			"[1, 3, 55]",
-			[]json.RawMessage{[]byte("[1, 3, 55]")},
+	},
+	{
+		`{}{}[]{}{}`,
+		[]json.RawMessage{
+			[]byte(`{}`),
+			[]byte(`{}`),
+			[]byte(`[]`),
+			[]byte(`{}`),
+			[]byte(`{}`),
 		},
-		{
-			"[1, 3, 55, ]",
-			nil,
-		},
-		{
-			`{
+	},
+	{
+		`{"a": "b"}`,
+		[]json.RawMessage{[]byte(`{"a": "b"}`)},
+	},
+	{
+		"[1, 3, 55]",
+		[]json.RawMessage{[]byte("[1, 3, 55]")},
+	},
+	{
+		"[1, 3, 55, ]",
+		nil,
+	},
+	{
+		`{
   "login": "xarantolus",
   "id": 0,
   "node_id": "----",
@@ -100,7 +168,7 @@ func TestReader(t *testing.T) {
   "created_at": "2017-10-02T18:47:02Z",
   "updated_at": "2021-01-08T20:42:33Z"
 }`,
-			[]json.RawMessage{[]byte(`{
+		[]json.RawMessage{[]byte(`{
   "login": "xarantolus",
   "id": 0,
   "node_id": "----",
@@ -134,59 +202,44 @@ func TestReader(t *testing.T) {
   "created_at": "2017-10-02T18:47:02Z",
   "updated_at": "2021-01-08T20:42:33Z"
 }`)},
-		},
-		{
-			"askdflaksmvalsd",
-			nil,
-		},
-		{
-			`"json encoded text\nNew line"`,
-			nil,
-		},
-		{
-			`{
+	},
+	{
+		"askdflaksmvalsd",
+		nil,
+	},
+	{
+		`"json encoded text\nNew line"`,
+		nil,
+	},
+	{
+		`{
 				"test": "this is a very }{} mean string"	
 			}`,
-			[]json.RawMessage{
-				json.RawMessage([]byte(`{
+		[]json.RawMessage{
+			json.RawMessage([]byte(`{
 				"test": "this is a very }{} mean string"	
 			}`)),
-			},
 		},
-		{
-			`{
+	},
+	{
+		`{
 				"test": "this is another very ][] mean string"	
 			}`,
-			[]json.RawMessage{
-				[]byte(
-					`{
+		[]json.RawMessage{
+			[]byte(
+				`{
 				"test": "this is another very ][] mean string"	
 			}`),
-			},
 		},
-		{
-			`{}some {}text[] in {}between{}`,
-			[]json.RawMessage{
-				[]byte(`{}`),
-				[]byte(`{}`),
-				[]byte(`[]`),
-				[]byte(`{}`),
-				[]byte(`{}`),
-			},
+	},
+	{
+		`{}some {}text[] in {}between{}`,
+		[]json.RawMessage{
+			[]byte(`{}`),
+			[]byte(`{}`),
+			[]byte(`[]`),
+			[]byte(`{}`),
+			[]byte(`{}`),
 		},
-	}
-	for _, tt := range tests {
-		t.Run(t.Name(), func(t *testing.T) {
-			if gotExtracted, _ := ReaderObjects(strings.NewReader(tt.arg)); !reflect.DeepEqual(gotExtracted, tt.want) {
-				t.Errorf("String() = %v, want %v", convert(gotExtracted), convert(tt.want))
-			}
-		})
-	}
-}
-
-func convert(m []json.RawMessage) (msgs []string) {
-	for _, v := range m {
-		msgs = append(msgs, string(v))
-	}
-	return
+	},
 }
