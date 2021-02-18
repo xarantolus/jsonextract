@@ -99,6 +99,8 @@ results in
 * When extracting objects from JavaScript files, you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indicies being used in the script. You have to filter these out yourself.
 
 ### Changelog
+* **v1.1.3**
+  * Many small internal changes
 * **v1.1.2**
   * Also support JS template strings
 * **v1.1.1**

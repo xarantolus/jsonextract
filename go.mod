@@ -1,6 +1,6 @@
 module github.com/xarantolus/jsonextract
 
-go 1.15
+go 1.16
 
 require (
 	github.com/tdewolff/parse v2.3.4+incompatible
