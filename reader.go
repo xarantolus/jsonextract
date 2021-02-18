@@ -57,7 +57,7 @@ func Reader(reader io.Reader, callback JSONCallback) (err error) {
 		// We're looking for opening brackets
 		if r == openArray || r == openObject {
 
-			// We go back one rune so the JSON decoder will also read the opening brace
+			// We go back one rune so the JavaScript decoder will also read the opening brace
 			err = buffered.UnreadRune()
 			if err != nil {
 				break
@@ -72,7 +72,8 @@ func Reader(reader io.Reader, callback JSONCallback) (err error) {
 				readByteCount int
 			)
 
-			// Now we just let the default decoder parse this JSON data
+			// Now we interpret the next bytes as JS object and convert them into JSON
+			// since readJSObject might return invalid JSON, we must check the output
 			msg, readByteCount, err = readJSObject(&buffered)
 			if err != nil || !json.Valid(msg) {
 				// OK, so we tried to parse, but it didn't work.
@@ -85,7 +86,10 @@ func Reader(reader io.Reader, callback JSONCallback) (err error) {
 				continue
 			}
 
-			// we read a certain amount of data that we should skip in the next round
+			// we read a certain amount of data that we should skip in the next round,
+			// but we should restore anything we read that wasn't part of the object we returned
+			// It is important to note that len(msg) is only equal to readByteCount if the
+			// original io.Reader already contained a valid JSON object, but not if it was an JS object
 			err = buffered.ReturnAndSkip(readByteCount)
 			if err != nil {
 				break
@@ -121,10 +125,13 @@ func ReaderObjects(reader io.Reader) (objects []json.RawMessage, err error) {
 
 // resettableRuneBuffer allows reading from a buffer, then resetting certain parts
 type resettableRuneBuffer struct {
+	// normalBuffer is just the normal buffered reader. It is used because it allows unreading runes
 	normalBuffer *bufio.Reader
 
+	// bufBefore stores all data that was read until we return to the beginning of an object
 	bufBefore bytes.Buffer
 
+	// returnBuffer contains the content of bufBefore after we returned to a certain part we read before
 	returnBuffer bytes.Buffer
 }
 
@@ -184,12 +191,13 @@ func (s *resettableRuneBuffer) ReturnAndSkipOne() (err error) {
 	return
 }
 
+// singleQuoteReplacer replaces a single quoted string to be double-quoted
 var singleQuoteReplacer = strings.NewReplacer(
-	// Replace single quotes with double
+	// Replace single quotes with double, ' => "
 	"'", "\"",
-	// Escape quotes from before
+	// Escape quotes from before, " => \"
 	"\"", "\\\"",
-	// unescape single quotes from before
+	// unescape single quotes from before, \' => '
 	"\\'", "'",
 )
 
