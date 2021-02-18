@@ -101,6 +101,8 @@ results in
 * When extracting objects from JavaScript files, you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indicies being used in the script. You have to filter these out yourself.
 
 ### Changelog
+* **v1.1.5**
+  * Small clarification on the callback
 * **v1.1.4**
   * Support trailing commas in arrays and objects
 * **v1.1.3**
