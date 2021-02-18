@@ -232,6 +232,8 @@ func readJSObject(r io.Reader) (output []byte, readInputBytes int, err error) {
 	)
 
 	var (
+		// since it's a dyck language, we just count the level of braces.
+		// If we reach zero, we can stop parsing as we know this is the end of this object
 		first byte
 		level int
 	)
@@ -281,7 +283,7 @@ loop:
 				}
 				buf.Write(text)
 
-				// We finished the JS object that was started. Time to stop
+				// We finished the JS object that was started with `first`. Time to stop
 				if level == 0 {
 					break loop
 				}
