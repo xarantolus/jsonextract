@@ -40,6 +40,8 @@ type JSONCallback func([]byte) error
 // Reader reads all JSON and JavaScript objects from the input and calls callback for each of them.
 // If callback returns an error, Reader will stop processing and return the error.
 // If the returned error is ErrStop, Reader will return nil instead of the error.
+// Please note that reader must return UTF-8 bytes, if you're not sure use the charset.NewReader
+// method to convert to the correct charset (https://pkg.go.dev/golang.org/x/net/html/charset#NewReader)
 func Reader(reader io.Reader, callback JSONCallback) (err error) {
 
 	// Need to buffer in order to be able to unread invalid sections
@@ -47,9 +49,11 @@ func Reader(reader io.Reader, callback JSONCallback) (err error) {
 		normalBuffer: bufio.NewReader(reader),
 	}
 
+	var r rune
+
 	for {
 		// Read character by character
-		r, _, err := buffered.ReadRune()
+		r, _, err = buffered.ReadRune()
 		if err != nil {
 			break
 		}
