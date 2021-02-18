@@ -62,7 +62,7 @@ or on URLs like this:
 ### Other examples
 There are also examples in the [`examples`](examples/) subdirectory.
 
-The [string example](examples/string/main.go) shows how to use the package to quickly get all JSON objects/arrays in a string, it uses an [`strings.Reader`](https://pkg.go.dev/strings#NewReader) for that.
+The [string example](examples/string/main.go) shows how to use the package to quickly get all JSON objects/arrays in a string, it uses a [`strings.Reader`](https://pkg.go.dev/strings#NewReader) for that.
 
 The [`stackoverflow-chart` example](examples/stackoverflow-chart/main.go) shows how to extract the reputation chart data of a StackOverflow user. Extracted data is then used to draw the same chart using Go:
 
@@ -81,7 +81,7 @@ This means that text like the following, which is definitely not valid JSON, can
 
 	// Comments are removed while processing
 
-	// Mixing normal and quotes keys is possible 
+	// Mixing normal and quoted keys is possible 
 	"obj": {
 		"quoted": 325,
 		unquoted: 'test', // This trailing comma will be removed
@@ -101,22 +101,14 @@ results in
 * When extracting objects from JavaScript files, you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indicies being used in the script. You have to filter these out yourself.
 
 ### Changelog
-* **v1.1.6**
-  * Always return the correct error
-* **v1.1.5**
-  * Small clarification on the callback
-* **v1.1.4**
-  * Support trailing commas in arrays and objects
-* **v1.1.3**
-  * Many small internal changes
-* **v1.1.2**
-  * Also support JS template strings
-* **v1.1.1**
-  * Also turn single-quoted strings into valid JSON
-* **v1.1.0**
-  * Now supports anything that *looks like* JSON, which also includes JavaScript object declarations
-* **v1.0.0**
-  * Initial version, supports only JSON
+* **v1.1.6**: Always return the correct error
+* **v1.1.5**: Small clarification on the callback
+* **v1.1.4**: Support trailing commas in arrays and objects
+* **v1.1.3**: Many small internal changes
+* **v1.1.2**: Also support JS template strings
+* **v1.1.1**: Also turn single-quoted strings into valid JSON
+* **v1.1.0**: Now supports anything that *looks like* JSON, which also includes JavaScript object declarations
+* **v1.0.0**: Initial version, supports only JSON
 
 ### [License](LICENSE)
 This is free as in freedom software. Do whatever you like with it.
