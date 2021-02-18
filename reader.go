@@ -63,9 +63,8 @@ func Reader(reader io.Reader, callback JSONCallback) (err error) {
 				break
 			}
 
-			// Reset our "before" buffer, as it stores anything we read so far since the last
-			// reset. This makes sure we return to the currently read rune in case it's not a valid object
-			buffered.bufBefore.Reset()
+			// Mark the start of our object. We can return here in case of errors
+			buffered.MarkStart()
 
 			var (
 				msg           []byte
@@ -191,15 +190,11 @@ func (s *resettableRuneBuffer) ReturnAndSkipOne() (err error) {
 	return
 }
 
-// singleQuoteReplacer replaces a single quoted string to be double-quoted
-var singleQuoteReplacer = strings.NewReplacer(
-	// Replace single quotes with double, ' => "
-	"'", "\"",
-	// Escape quotes from before, " => \"
-	"\"", "\\\"",
-	// unescape single quotes from before, \' => '
-	"\\'", "'",
-)
+// MarkStart marks a restart point. When calling a return method, this
+// start will be used
+func (s *resettableRuneBuffer) MarkStart() {
+	s.bufBefore.Reset()
+}
 
 // ReturnAndSkip returns the buffer to the last reset (or initial) from an outside perspective,
 // except that it skips `offset` bytes from the input
@@ -220,6 +215,16 @@ var jsIdentifiers = map[string]bool{
 	"false": true,
 	"null":  true,
 }
+
+// singleQuoteReplacer replaces a single quoted string to be double-quoted
+var singleQuoteReplacer = strings.NewReplacer(
+	// Replace single quotes with double, ' => "
+	"'", "\"",
+	// Escape quotes from before, " => \"
+	"\"", "\\\"",
+	// unescape single quotes from before, \' => '
+	"\\'", "'",
+)
 
 // readJSObject converts the input data from `r` to JSON if possible.
 // Input data should either already be JSON or a JavaScript object declaration.
