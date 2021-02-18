@@ -137,7 +137,18 @@ var testData = []struct {
 	},
 	{
 		"[1, 3, 55, ]",
-		nil,
+		[]json.RawMessage{
+			[]byte(`[1,3,55]`),
+		},
+	},
+	{
+		`{
+			"a": "b",
+			"c": "trailing comma",
+    		}`,
+		[]json.RawMessage{
+			[]byte(`{"a":"b","c":"trailing comma"}`),
+		},
 	},
 	{
 		`{
@@ -233,6 +244,30 @@ var testData = []struct {
 		 }`,
 		[]json.RawMessage{
 			[]byte(`{"a":null,"b":true,"c":false}`),
+		},
+	},
+	{
+		`["one", 'two', "three", ]`,
+		[]json.RawMessage{
+			[]byte(`["one","two","three"]`),
+		},
+	},
+	{
+		`{
+	// Keys without quotes are valid in JavaScript, but not in JSON
+	key: "value",
+	num: 295.2,
+
+	// Comments are removed while processing
+
+	// Mixing normal and quotes keys is possible 
+	"obj": {
+		"quoted": 325,
+		unquoted: 'test', // This trailing comma will be removed
+	}
+}`,
+		[]json.RawMessage{
+			[]byte(`{"key":"value","num":295.2,"obj":{"quoted":325,"unquoted":"test"}}`),
 		},
 	},
 }

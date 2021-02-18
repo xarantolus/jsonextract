@@ -82,7 +82,7 @@ This means that text like the following, which is definitely not valid JSON, can
 	// Mixing normal and quotes keys is possible 
 	"obj": {
 		"quoted": 325,
-		unquoted: 'test'
+		unquoted: 'test', // This trailing comma will be removed
 	}
 }
 ```
@@ -99,6 +99,8 @@ results in
 * When extracting objects from JavaScript files, you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indicies being used in the script. You have to filter these out yourself.
 
 ### Changelog
+* **v1.1.4**
+  * Support trailing commas in arrays and objects
 * **v1.1.3**
   * Many small internal changes
 * **v1.1.2**

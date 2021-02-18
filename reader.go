@@ -233,7 +233,7 @@ func readJSObject(r io.Reader) (output []byte, readInputBytes int, err error) {
 	lex := js.NewLexer(r)
 
 	var (
-		buf = bytes.Buffer{}
+		buf = new(bytes.Buffer)
 	)
 
 	var (
@@ -242,6 +242,8 @@ func readJSObject(r io.Reader) (output []byte, readInputBytes int, err error) {
 		first byte
 		level int
 	)
+
+	var lastByte byte
 
 loop:
 	for {
@@ -262,7 +264,9 @@ loop:
 
 		switch tt {
 		case js.SingleLineCommentToken, js.MultiLineCommentToken, js.WhitespaceToken, js.LineTerminatorToken:
-			// Ignore tokens that are not needed for JSON
+			// Ignore tokens that are not needed for JSON.
+			// We must continue so they are not seen as last written byte
+			continue
 		case js.IdentifierToken:
 			// Quote keys/values, except if they are special
 			if jsIdentifiers[string(text)] {
@@ -286,6 +290,14 @@ loop:
 				if text[0] == matchingBracket[first] {
 					level--
 				}
+
+				// An array/object with trailing comma was found.
+				// Example: [1, 2, 3, ]
+				// We remove the comma to also support those objects.
+				if lastByte == ',' {
+					buf = bytes.NewBuffer(buf.Bytes()[:buf.Len()-1])
+				}
+
 				buf.Write(text)
 
 				// We finished the JS object that was started with `first`. Time to stop
@@ -302,7 +314,8 @@ loop:
 			// Special quotes must be handled
 			if text[0] == '\'' {
 				buf.WriteString(singleQuoteReplacer.Replace(string(text)))
-				continue
+				// Break out of switch to continue with the lastByte assignment below
+				break
 			}
 
 			// This is either a constant a normal string
@@ -320,6 +333,8 @@ loop:
 		default:
 			buf.Write(text)
 		}
+
+		lastByte = text[len(text)-1]
 	}
 
 	if err == nil || err == io.EOF {
