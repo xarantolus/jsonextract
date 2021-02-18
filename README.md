@@ -101,6 +101,8 @@ results in
 * When extracting objects from JavaScript files, you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indicies being used in the script. You have to filter these out yourself.
 
 ### Changelog
+* **v1.1.6**
+  * Always return the correct error
 * **v1.1.5**
   * Small clarification on the callback
 * **v1.1.4**

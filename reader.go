@@ -26,8 +26,7 @@ var matchingBracket = map[byte]byte{
 }
 
 var (
-	// ErrStop can be returned from a JSONCallback function to signal that processing should stop
-	// at this object
+	// ErrStop can be returned from a JSONCallback function to indicate that processing should stop at this object
 	ErrStop = errors.New("stop processing json")
 )
 

@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"testing/iotest"
 )
 
 func TestReader(t *testing.T) {
@@ -71,18 +72,10 @@ func TestCallback(t *testing.T) {
 	})
 }
 
-type deadReader struct {
-	err error
-}
-
-func (d *deadReader) Read(b []byte) (n int, err error) {
-	return 0, d.err
-}
-
 func TestReaderErr(t *testing.T) {
 	var err = fmt.Errorf("test error")
 
-	var testReader io.Reader = &deadReader{err}
+	var testReader io.Reader = iotest.ErrReader(err)
 
 	o, rerr := ReaderObjects(testReader)
 	if err != rerr {
