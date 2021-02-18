@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"reflect"
 	"strings"
 	"testing"
@@ -67,6 +69,28 @@ func TestCallback(t *testing.T) {
 			t.Errorf("Reader() calls callback %d times instead of the expected 2 times", calls)
 		}
 	})
+}
+
+type deadReader struct {
+	err error
+}
+
+func (d *deadReader) Read(b []byte) (n int, err error) {
+	return 0, d.err
+}
+
+func TestReaderErr(t *testing.T) {
+	var err = fmt.Errorf("test error")
+
+	var testReader io.Reader = &deadReader{err}
+
+	o, rerr := ReaderObjects(testReader)
+	if err != rerr {
+		t.Errorf("expected ReaderObjects() to return first read error")
+	}
+	if len(o) > 0 {
+		t.Error("expected ReaderObjects() to return no result on error")
+	}
 }
 
 func TestExpectations(t *testing.T) {
@@ -278,6 +302,12 @@ var testData = []struct {
 }`,
 		[]json.RawMessage{
 			[]byte(`{"key":"value","num":295.2,"obj":{"quoted":325,"unquoted":"test"}}`),
+		},
+	},
+	{
+		`<script>var arr = ["one", 'two &amp; three', "four", ];</script>`,
+		[]json.RawMessage{
+			[]byte(`["one","two &amp; three","four"]`),
 		},
 	},
 }
