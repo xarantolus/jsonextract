@@ -31,6 +31,8 @@ func main() {
 		// If you want to continue with the next object, return nil
 		// To stop after this object, you can return jsonextract.ErrStop
 
+		// len(b) > 0 will always be true
+
 		// But here, we just print the data
 		fmt.Println(string(b))
 

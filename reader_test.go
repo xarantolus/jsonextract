@@ -69,6 +69,16 @@ func TestCallback(t *testing.T) {
 	})
 }
 
+func TestExpectations(t *testing.T) {
+	// This is an assumption needed so this package works correctly
+	// Since this is true, the value passed to callback will always have a length > 0
+	t.Run("empty string to be invalid json", func(t *testing.T) {
+		if json.Valid([]byte("")) {
+			t.Fail()
+		}
+	})
+}
+
 func convert(m []json.RawMessage) (msgs []string) {
 	for _, v := range m {
 		msgs = append(msgs, string(v))
