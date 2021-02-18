@@ -296,9 +296,9 @@ loop:
 
 				// An array/object with trailing comma was found.
 				// Example: [1, 2, 3, ]
-				// We remove the comma to also support those objects.
 				if lastByte == ',' {
-					buf = bytes.NewBuffer(buf.Bytes()[:buf.Len()-1])
+					// We remove the comma to also support those objects.
+					buf.Truncate(buf.Len() - 1)
 				}
 
 				buf.Write(text)
