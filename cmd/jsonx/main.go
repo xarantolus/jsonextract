@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -14,7 +13,7 @@ import (
 )
 
 var (
-	limit = flag.Int("limit", math.MinInt32, "Stop extracting after this many objects")
+	limit = flag.Int("limit", -1, "Stop extracting after this many objects")
 )
 
 func main() {
