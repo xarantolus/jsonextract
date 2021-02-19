@@ -193,19 +193,19 @@ var testData = []struct {
 	want []json.RawMessage
 }{
 	{
-		strings.Repeat("{", 2500) + strings.Repeat("}", 10000),
+		strings.Repeat("{", 250) + strings.Repeat("}", 100),
 		[]json.RawMessage{
 			[]byte("{}"),
 		},
 	},
 	{
-		strings.Repeat("[", 10000) + "]",
+		strings.Repeat("[", 100) + "]",
 		[]json.RawMessage{
 			[]byte("[]"),
 		},
 	},
 	{
-		"[\"" + strings.Repeat("long string ", 1000) + "]",
+		"[\"" + strings.Repeat("long string ", 100) + "]",
 		nil,
 	},
 	{
@@ -446,4 +446,125 @@ var testData = []struct {
 		`{expr: null || "fallback string" }`,
 		nil,
 	},
+}
+
+type infiniteReader struct {
+	initial *strings.Reader
+
+	rest []byte
+
+	reads int
+}
+
+func (i *infiniteReader) Read(p []byte) (n int, err error) {
+	n, err = i.initial.Read(p)
+
+	for {
+		i.reads++
+		if n >= len(p) {
+			return len(p), nil
+		}
+
+		// Almost infinite?
+		if i.reads > 10_000 {
+			panic("infiniteReader has read too many times")
+		}
+
+		n += copy(p[n:], i.rest)
+	}
+}
+
+var dyckReaderTestdata = []struct {
+	input string
+	want  string
+}{
+	{
+		"{this is included} but not this",
+		"{this is included}",
+	},
+	{
+		`{
+			"a rather": "valid json object",
+			"it even": {
+				"has": [
+					"arrays",
+					"in",
+					"it",
+				]
+			}	
+		} but what happened if we cut this off?`,
+		`{
+			"a rather": "valid json object",
+			"it even": {
+				"has": [
+					"arrays",
+					"in",
+					"it",
+				]
+			}	
+		}`,
+	},
+	{
+		"[` Including escaped backticks shouldn't be a problem \\``]",
+		"[` Including escaped backticks shouldn't be a problem \\``]",
+	},
+	{
+		`{"just like \"": "any other 'quotes' " } hmm`,
+		`{"just like \"": "any other 'quotes' " }`,
+	},
+	{
+		`{{{{{{{}}}}}}}}}`,
+		`{{{{{{{}}}}}}}`,
+	},
+	{
+		`[[[[[[[[[[[[[[[[["ye\"et"]]]]]]]]]]]]]]]]]]]]]]]]]]`,
+		`[[[[[[[[[[[[[[[[["ye\"et"]]]]]]]]]]]]]]]]]`,
+	},
+	{
+		`{ ` + strings.Repeat("a", 100) + "}",
+		`{ ` + strings.Repeat("a", 100) + "}",
+	},
+	{
+		"['ayy \\'', \"lmao\\\"\"]",
+		`['ayy \'', "lmao\""]`,
+	},
+	{
+		"[` 'quotes' inside of \"other quotes\"`, 'but wait, there are `more`']]]]]]]]]]]]]]}]]",
+		"[` 'quotes' inside of \"other quotes\"`, 'but wait, there are `more`']",
+	},
+}
+
+func TestDyckReader(t *testing.T) {
+	for _, tt := range dyckReaderTestdata {
+		t.Run(t.Name(), func(t *testing.T) {
+
+			if strings.Count(tt.input, "{") > strings.Count(tt.input, "}") ||
+				strings.Count(tt.input, "[") > strings.Count(tt.input, "]") {
+				return
+			}
+
+			var infiniteReader = &infiniteReader{
+				initial: strings.NewReader(tt.input),
+				rest:    []byte("this will be repeated forever "),
+			}
+
+			// We want to make sure that this reader always terminates
+			// after the first JSON object/array was read
+			var r = &javaScriptDyckReader{
+				underlyingReader: infiniteReader,
+			}
+
+			var buf bytes.Buffer
+
+			_, err := io.CopyBuffer(&buf, r, make([]byte, 32))
+			if err != nil {
+				panic(err)
+			}
+
+			value := buf.Bytes()
+			if !bytes.Equal([]byte(tt.want), value) {
+				t.Errorf("Invalid JavaScript dyckreader implementation: wanted %s, got %s", string(tt.want), string(value))
+			}
+		})
+	}
 }
