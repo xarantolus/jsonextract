@@ -321,6 +321,12 @@ loop:
 				if text[0] == first {
 					level++
 				}
+
+				if lastByte == '{' && text[0] == '{' {
+					err = fmt.Errorf("Opening brace { cannot come after another opening brace")
+					break loop
+				}
+
 				buf.Write(text)
 			case ']', '}':
 				if text[0] == matchingBracket[first] {
