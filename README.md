@@ -98,9 +98,10 @@ results in
 
 ### Notes
 * After passing the `io.Reader` to functions of this package, you should no longer use it afterwards. It might be read to the end, but in cases of stopping (using [`ErrStop`](https://pkg.go.dev/github.com/xarantolus/jsonextract#ErrStop)) some data might remain in the reader.
-* When extracting objects from JavaScript files, you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indicies being used in the script. You have to filter these out yourself.
+* When extracting objects from JavaScript files, you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indices being used in the script. You have to filter these out yourself.
 
 ### Changelog
+* **v1.1.9**: JS Regex patterns are now returned as strings
 * **v1.1.8**: Fix bug where template literals were interpreted the wrong way when certain escape sequences were present
 * **v1.1.7**: More efficient extraction when a trailing comma is found
 * **v1.1.6**: Always return the correct error

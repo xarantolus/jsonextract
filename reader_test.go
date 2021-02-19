@@ -77,6 +77,20 @@ func TestCallback(t *testing.T) {
 	})
 }
 
+type failableReader struct {
+	r io.Reader
+
+	failNext bool
+}
+
+func (f *failableReader) Read(p []byte) (n int, err error) {
+	if f.failNext {
+		return 0, fmt.Errorf("failed")
+	}
+
+	return f.r.Read(p)
+}
+
 func TestReaderErr(t *testing.T) {
 	var err = fmt.Errorf("test error")
 
@@ -88,6 +102,35 @@ func TestReaderErr(t *testing.T) {
 	}
 	if len(o) > 0 {
 		t.Error("expected ReaderObjects() to return no result on error")
+	}
+
+	r := iotest.OneByteReader(strings.NewReader(strings.Repeat("{}", 2500)))
+
+	o, rerr = ReaderObjects(r)
+
+	if rerr != nil {
+		t.Error("Expected ReaderObjects() to return no error")
+	}
+	if len(o) != 2500 {
+		t.Error("ReaderObjects() didn't read the entire reader")
+	}
+
+	var cbCount int
+	fr := &failableReader{
+		r: strings.NewReader("{}{}"),
+	}
+	rerr = Reader(fr, func(b []byte) error {
+		cbCount++
+
+		if cbCount == 1 {
+			fr.failNext = true
+		}
+
+		return nil
+	})
+
+	if rerr == nil || cbCount != 1 {
+		t.Errorf("Expected Reader to return error after exactly one callback")
 	}
 }
 
@@ -149,6 +192,22 @@ var testData = []struct {
 	arg  string
 	want []json.RawMessage
 }{
+	{
+		strings.Repeat("{", 2500) + strings.Repeat("}", 10000),
+		[]json.RawMessage{
+			[]byte("{}"),
+		},
+	},
+	{
+		strings.Repeat("[", 10000) + "]",
+		[]json.RawMessage{
+			[]byte("[]"),
+		},
+	},
+	{
+		"[\"" + strings.Repeat("long string ", 1000) + "]",
+		nil,
+	},
 	{
 		// In JS, we can escape a ` in a template literal
 		"{ key: ` \\` ` }",
@@ -370,5 +429,21 @@ var testData = []struct {
 		[]json.RawMessage{
 			[]byte(`["one","two &amp; three","four"]`),
 		},
+	},
+	{
+		// Regex fields should be escaped as a normal string,
+		// no need to throw away useful data that we might want to extract
+		`{"key":  /test/i, useful_data: { "a": "b" }, another_value_we_might_want:"c" }`,
+		[]json.RawMessage{
+			[]byte(`{"key":"/test/i","useful_data":{"a":"b"},"another_value_we_might_want":"c"}`),
+		},
+	},
+	{
+		`{"num": 3+3 }`,
+		nil,
+	},
+	{
+		`{expr: null || "fallback string" }`,
+		nil,
 	},
 }

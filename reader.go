@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"strconv"
 	"strings"
 
 	"github.com/tdewolff/parse/js"
@@ -202,7 +201,7 @@ func (s *resettableRuneBuffer) ReturnAndSkipOne() (err error) {
 	// Skip one rune
 	_, _, err = s.returnBuffer.ReadRune()
 
-	s.bufBefore = bytes.Buffer{}
+	s.bufBefore.Reset()
 
 	return
 }
@@ -303,7 +302,13 @@ loop:
 			if jsIdentifiers[string(text)] {
 				buf.Write(text)
 			} else {
-				buf.Write([]byte(strconv.Quote(string(text))))
+				// Quote this identifier, as in interpret it as string
+				data, merr := json.Marshal(string(text))
+				if merr != nil {
+					err = merr
+					break loop
+				}
+				buf.Write(data)
 			}
 		case js.PunctuatorToken:
 			if len(text) > 1 {
@@ -349,19 +354,36 @@ loop:
 				break
 			}
 
-			// This is either a constant a normal string
-			buf.Write(text)
+			if text[0] == '"' {
+				// A normal string
+				buf.Write(text)
+				// Continue with lastByte assignment
+				break
+			}
+
+			err = fmt.Errorf("unsupported string type (text: %s)", string(text))
+			break loop
 		case js.TemplateToken:
 			var toEscape = templateQuoteReplacer.Replace(string(text[1 : len(text)-1]))
 
 			data, merr := json.Marshal(string(toEscape))
-			if err != nil {
+			if merr != nil {
 				err = merr
 				break loop
 			}
 
 			buf.Write(data)
+		case js.RegexpToken:
+			// Regex patterns are just escaped and treated as strings,
+			// no need to skip the entire object
+			data, merr := json.Marshal(string(text))
+			if merr != nil {
+				err = merr
+				break loop
+			}
+			buf.Write(data)
 		default:
+			// Basically only numbers are left, i guess?
 			buf.Write(text)
 		}
 
