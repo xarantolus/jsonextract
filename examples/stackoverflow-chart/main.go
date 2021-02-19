@@ -39,7 +39,7 @@ func main() {
 			return jsonextract.ErrStop
 		}
 
-		// continue with next JSON object
+		// continue with next object
 		return nil
 	})
 	if err != nil {

@@ -84,15 +84,19 @@ This means that text like the following, which is definitely not valid JSON, can
 	// Mixing normal and quoted keys is possible 
 	"obj": {
 		"quoted": 325,
+		'other quotes': true,
 		unquoted: 'test', // This trailing comma will be removed
-	}
+	},
+
+	`lastvalue`: `multiline strings are
+no problem`
 }
 ```
 
 results in 
 
 ```json
-{"key":"value","num":295.2,"obj":{"quoted":325,"unquoted":"test"}}
+{"key":"value","num":295.2,"obj":{"quoted":325,"other quotes":true,"unquoted":"test"},"lastvalue":"multiline strings are\nno problem"}
 ```
 
 
