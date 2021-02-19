@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -39,6 +40,10 @@ func TestCallback(t *testing.T) {
 			})
 			if err != nil {
 				panic(err)
+			}
+
+			if calls != len(tt.want) {
+				t.Errorf("Callback was called %d times, but wanted %d calls", calls, len(tt.want))
 			}
 		})
 	}
@@ -96,6 +101,43 @@ func TestExpectations(t *testing.T) {
 	})
 }
 
+func TestHTMLFile(t *testing.T) {
+
+	var expectedValues = [][]byte{
+		[]byte(`{"value":25,"another":"test","quoted":{"is this even valid in JS?":75},"nextkey":"this\ntemplate literal\n\nspans\n\nmany \n\n\nlines"}`),
+		[]byte(`{"subkey":"value"}`),
+		[]byte(`{"subkey":"value"}`),
+		[]byte(`{"@context":"https://schema.org","@type":"Product","aggregateRating":{"@type":"AggregateRating","ratingValue":"3.5","reviewCount":"11"},"description":"jsonextract is a Go library","name":"jsonextract","image":"microwave.jpg","offers":{"@type":"Offer","availability":"https://schema.org/InStock","price":"00.00","priceCurrency":"USD"},"review":[{"@type":"Review","author":"Ellie","datePublished":"2012-09-06","reviewBody":"I'm still not sure if this works.","name":"Test","reviewRating":{"@type":"Rating","bestRating":"5","ratingValue":"1","worstRating":"1"}},{"@type":"Review","author":"Lucas","datePublished":"2014-02-21","reviewBody":"Great microwave for the price.","name":"Value purchase","reviewRating":{"@type":"Rating","bestRating":"5","ratingValue":"4","worstRating":"1"}}]}`),
+		[]byte(`{}`),
+		[]byte(`[]`),
+		[]byte("[\" this is a template string. \",\"in JS you can escape` the quote character `\"]"),
+	}
+
+	f, err := os.Open("testdata/test.html")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	var calls int
+	err = Reader(f, func(b []byte) error {
+		if !bytes.Equal(expectedValues[calls], b) {
+			t.Errorf("Expected value %s to be %s", string(b), string(expectedValues[calls]))
+		}
+
+		calls++
+
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	if len(expectedValues) != calls {
+		t.Errorf("Expected callback to be called %d times, but was only called %d", len(expectedValues), calls)
+	}
+}
+
 func convert(m []json.RawMessage) (msgs []string) {
 	for _, v := range m {
 		msgs = append(msgs, string(v))
@@ -107,6 +149,32 @@ var testData = []struct {
 	arg  string
 	want []json.RawMessage
 }{
+	{
+		// In JS, we can escape a ` in a template literal
+		"{ key: ` \\` ` }",
+		[]json.RawMessage{
+			[]byte("{\"key\":\" ` \"}"),
+		},
+	},
+	{
+		"[`Template quotes`]",
+		[]json.RawMessage{
+			[]byte("[\"Template quotes\"]"),
+		},
+	},
+	{
+		// The \n gets escaped by Go
+		"{ 'key': `this is a\nmultline JavaScript string` }",
+		[]json.RawMessage{
+			[]byte(`{"key":"this is a\nmultline JavaScript string"}`),
+		},
+	},
+	{
+		"[`Template quotes inside of template quotes can be escaped using \\``]",
+		[]json.RawMessage{
+			[]byte("[\"Template quotes inside of template quotes can be escaped using `\"]"),
+		},
+	},
 	{
 		"{			a: 'null',	b: `true`, c: \"false\"		 }",
 		[]json.RawMessage{

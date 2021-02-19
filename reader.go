@@ -107,6 +107,8 @@ func Reader(reader io.Reader, callback JSONCallback) (err error) {
 				// The returned error
 				return err
 			}
+
+			buffered.MarkEnd()
 		}
 	}
 
@@ -135,6 +137,10 @@ type resettableRuneBuffer struct {
 
 	// returnBuffer contains the content of bufBefore after we returned to a certain part we read before
 	returnBuffer bytes.Buffer
+
+	// enableReturn defines whether the buffer should log what is read through it.
+	// if true, one can return to any position after it was enabled
+	enableReturn bool
 }
 
 // Read implements io.Reader
@@ -145,12 +151,16 @@ func (s *resettableRuneBuffer) Read(p []byte) (n int, err error) {
 			err = nil
 		}
 
-		s.bufBefore.Write(p[:n])
+		if s.enableReturn {
+			s.bufBefore.Write(p[:n])
+		}
 	}
 
 	n2, err2 := s.normalBuffer.Read(p[n:])
 
-	s.bufBefore.Write(p[n : n+n2])
+	if s.enableReturn {
+		s.bufBefore.Write(p[n : n+n2])
+	}
 	n += n2
 
 	return n, err2
@@ -163,14 +173,18 @@ func (s *resettableRuneBuffer) ReadRune() (r rune, size int, err error) {
 		r, size, err = s.normalBuffer.ReadRune()
 	}
 
-	s.bufBefore.WriteRune(r)
+	if s.enableReturn {
+		s.bufBefore.WriteRune(r)
+	}
 
 	return
 }
 
 // UnreadRune unreads the last rune read with ReadRune
 func (s *resettableRuneBuffer) UnreadRune() (err error) {
-	_ = s.bufBefore.UnreadRune()
+	if s.enableReturn {
+		_ = s.bufBefore.UnreadRune()
+	}
 
 	err = s.returnBuffer.UnreadRune()
 	if err == nil {
@@ -196,7 +210,14 @@ func (s *resettableRuneBuffer) ReturnAndSkipOne() (err error) {
 // MarkStart marks a restart point. When calling a return method, this
 // start will be used
 func (s *resettableRuneBuffer) MarkStart() {
+	s.enableReturn = true
 	s.bufBefore.Reset()
+}
+
+// MarkEnd disables returning until MarkStart is called the next time
+func (s *resettableRuneBuffer) MarkEnd() {
+	s.enableReturn = false
+	// bufBefore.Len() == 0 at this moment
 }
 
 // ReturnAndSkip returns the buffer to the last reset (or initial) from an outside perspective,
@@ -229,15 +250,20 @@ var singleQuoteReplacer = strings.NewReplacer(
 	"\\'", "'",
 )
 
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals
+var templateQuoteReplacer = strings.NewReplacer(
+	// Escaped quotes become normal characters
+	"\\`", "`",
+)
+
 // readJSObject converts the input data from `r` to JSON if possible.
 // Input data should either already be JSON or a JavaScript object declaration.
 // Please note that output might not be valid JSON and should be checked using json.Valid()
 func readJSObject(r io.Reader) (output []byte, readInputBytes int, err error) {
 	lex := js.NewLexer(r)
 
-	var (
-		buf = new(bytes.Buffer)
-	)
+	// buf stores the bytes that should be returned in output
+	var buf = new(bytes.Buffer)
 
 	var (
 		// since it's a dyck language, we just count the level of braces.
@@ -246,6 +272,8 @@ func readJSObject(r io.Reader) (output []byte, readInputBytes int, err error) {
 		level int
 	)
 
+	// lastByte stores the last byte we wrote to buf
+	// It is used for detecting and correcting trailing commas
 	var lastByte byte
 
 loop:
@@ -324,7 +352,7 @@ loop:
 			// This is either a constant a normal string
 			buf.Write(text)
 		case js.TemplateToken:
-			var toEscape = text[1 : len(text)-1]
+			var toEscape = templateQuoteReplacer.Replace(string(text[1 : len(text)-1]))
 
 			data, merr := json.Marshal(string(toEscape))
 			if err != nil {

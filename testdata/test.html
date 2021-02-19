@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jsonextract test page</title>
+
+    <script type="text/javascript">
+        var x = {
+            // This is a test value
+            value: 25,
+
+            another: "test",
+
+            'quoted': {
+            `is this even valid in JS?`: 75,
+        } /* Comment */,
+
+            nextkey: `this
+template literal
+
+spans
+
+many 
+
+
+lines`, // Trailing comma
+    }
+
+    var y = {
+      // Here, both {"subkey":"value"} from the comment and from the next object is extracted 
+      // because the parser only understands comments if they are within an object, not if
+      /* they are just anywhere */
+      key = {
+        "subkey": "value", 
+      },
+    };
+    </script>
+
+    <script type="application/ld+json">
+           , {
+              "@context": "https://schema.org",
+              "@type": "Product",
+              "aggregateRating": {
+                "@type": "AggregateRating",
+                "ratingValue": "3.5",
+                "reviewCount": "11",
+              },
+              "description": "jsonextract is a Go library",
+              "name": "jsonextract",
+              "image": "microwave.jpg",
+              "offers": {
+                "@type": "Offer",
+                "availability": "https://schema.org/InStock",
+                "price": "00.00",
+                "priceCurrency": "USD",
+              },
+              "review": [
+                {
+                  "@type": "Review",
+                  "author": "Ellie",
+                  "datePublished": "2012-09-06",
+                  "reviewBody": "I'm still not sure if this works.",
+                  "name": "Test",
+                  /* I should be able to put a comment
+
+
+                  anywhere I like
+
+
+                  */
+                  "reviewRating": {
+                    "@type": "Rating",
+                    "bestRating": "5",
+                    "ratingValue": "1",
+                    "worstRating": "1"
+                  },
+                },
+                {
+                  "@type": "Review",
+                  "author": "Lucas",
+                  "datePublished": "2014-02-21",
+                  "reviewBody": "Great microwave for the price.",
+                  "name": "Value purchase",
+                  "reviewRating": {
+                    "@type": "Rating",
+                    "bestRating": "5",
+                    "ratingValue": "4",
+                    "worstRating": `1` // Awful quotes, and a comment 
+                  },
+                },
+              ],
+            }
+            </script>
+</head>
+
+<body>
+    <h1>This is a title that seems to contain {} JSON [] objects</h1>
+</body>
+
+<script>
+  // This is gonna be the template string playground
+
+  var x = [` this is a template string. `, `in JS you can escape\` the quote character \``]
+
+  // This many trailing commas don't work
+  var y = [,,,,,];
+</script>
+
+</html>
