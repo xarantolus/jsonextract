@@ -34,7 +34,7 @@ func main() {
 	err = jsonextract.Reader(resp.Body, func(b []byte) error {
 		// Try to unmarshal
 		err := json.Unmarshal(b, &yValues)
-		if err == nil && len(yValues) > 0 {
+		if err == nil && len(yValues) > 5 {
 			// If it was successful, we stop parsing
 			return jsonextract.ErrStop
 		}
@@ -49,7 +49,7 @@ func main() {
 	// Now we check the integrity of our extracted data.
 	// With a struct we should check if all struct fields we want
 	// were extracted, but here we just see if we got any numbers
-	if len(yValues) == 0 {
+	if len(yValues) <= 5 {
 		panic("seems like we couldn't get chart data")
 	}
 

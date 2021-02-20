@@ -76,6 +76,7 @@ func Reader(reader io.Reader, callback JSONCallback) (err error) {
 			// Now we interpret the next bytes as JS object and convert them into JSON
 			// since readJSObject might return invalid JSON, we must check the output
 			msg, readByteCount, err = readJSObject(&buffered)
+
 			if err != nil || !json.Valid(msg) {
 				// OK, so we tried to parse, but it didn't work.
 				// We now just skip this opening brace and check the following data
@@ -145,24 +146,21 @@ type resettableRuneBuffer struct {
 // Read implements io.Reader
 func (s *resettableRuneBuffer) Read(p []byte) (n int, err error) {
 	if s.returnBuffer.Len() != 0 {
-		n, err = s.returnBuffer.Read(p)
-		if err == io.EOF {
-			err = nil
-		}
-
-		if s.enableReturn {
-			s.bufBefore.Write(p[:n])
-		}
+		n, _ = s.returnBuffer.Read(p)
 	}
 
-	n2, err2 := s.normalBuffer.Read(p[n:])
+	if n < len(p) {
+		n2, err2 := s.normalBuffer.Read(p[n:])
+
+		n += n2
+		err = err2
+	}
 
 	if s.enableReturn {
-		s.bufBefore.Write(p[n : n+n2])
+		s.bufBefore.Write(p[:n])
 	}
-	n += n2
 
-	return n, err2
+	return n, err
 }
 
 // ReadRune reads exactly one rune
@@ -217,6 +215,10 @@ func (s *resettableRuneBuffer) MarkStart() {
 func (s *resettableRuneBuffer) MarkEnd() {
 	s.enableReturn = false
 	// bufBefore.Len() == 0 at this moment
+
+	if s.bufBefore.Len() != 0 {
+		panic("wrong use of resettableRuneBuffer")
+	}
 }
 
 // ReturnAndSkip returns the buffer to the last reset (or initial) from an outside perspective,
@@ -225,7 +227,7 @@ func (s *resettableRuneBuffer) ReturnAndSkip(offset int) (err error) {
 	s.returnBuffer = s.bufBefore
 
 	if offset > 0 {
-		_, err = io.CopyN(ioutil.Discard, s, int64(offset))
+		_, err = io.CopyN(ioutil.Discard, &s.returnBuffer, int64(offset))
 	}
 
 	s.bufBefore = bytes.Buffer{}
@@ -290,7 +292,7 @@ loop:
 
 		// The following code assumes len(text) > 0
 
-		// First will always be either '{' or '{'
+		// First will always be either '{' or '['
 		if readInputBytes == 0 {
 			first = text[0]
 		}
@@ -351,11 +353,9 @@ loop:
 				if level == 0 {
 					break loop
 				}
-			case ':', ',':
-				buf.Write(text)
 			default:
-				err = fmt.Errorf("unexpected token %q in JS value", string(text))
-				break loop
+				// This could e.g. be a "-" in front of a number
+				buf.Write(text)
 			}
 		case js.StringToken:
 			// Special quotes must be handled
@@ -422,9 +422,16 @@ type javaScriptDyckReader struct {
 
 	// the current level of braces we're on
 	level int
+
+	// if we have found the end before
+	foundEnd bool
 }
 
 func (j *javaScriptDyckReader) Read(p []byte) (n int, err error) {
+	if j.foundEnd {
+		return 0, io.EOF
+	}
+
 	n, err = j.underlyingReader.Read(p)
 	if err != nil && err != io.EOF || n == 0 {
 		return n, err
@@ -433,7 +440,7 @@ func (j *javaScriptDyckReader) Read(p []byte) (n int, err error) {
 	if j.startCharacter == 0 {
 		j.startCharacter = p[0]
 
-		if !(j.startCharacter == '{' || j.startCharacter == '[') {
+		if j.startCharacter != openObject && j.startCharacter != openArray {
 			panic("javaScriptDyckReader expects first byte to be either '{' or '[', but was " + string(p[0]))
 		}
 	}
@@ -494,6 +501,7 @@ func (j *javaScriptDyckReader) Read(p []byte) (n int, err error) {
 
 				// We found the end of this dyck word
 				if j.level == 0 {
+					j.foundEnd = true
 					// Now we cut sharply after this word (including the last bracket, of course)
 					return i + 1, io.EOF
 				}

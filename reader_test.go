@@ -1,11 +1,13 @@
 package jsonextract
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"reflect"
 	"strings"
@@ -119,7 +121,7 @@ func TestReaderErr(t *testing.T) {
 	fr := &failableReader{
 		r: strings.NewReader("{}{}"),
 	}
-	rerr = Reader(fr, func(b []byte) error {
+	rerr = Reader(iotest.OneByteReader(fr), func(b []byte) error {
 		cbCount++
 
 		if cbCount == 1 {
@@ -193,20 +195,59 @@ var testData = []struct {
 	want []json.RawMessage
 }{
 	{
-		strings.Repeat("{", 250) + strings.Repeat("}", 100),
+		`
+		[]
+    <script>
+        StackExchange.ready(function () {
+
+                    var graphData = [984,984,1019,1019,1029,1029,1029,1029,1029,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1044,1044,1044,1044,1044,1044,1044,1044,1044,1044,1044,1044,1044,1069,1069,1069,1069,1069,1069,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1134,1134,1134,1134,1134,1134,1144,1144,1144,1144,1144,1144,1144,1144,1154,1154,1154,1154,1154,1154,1154,1154,1164,1164,1189,1189,1199,1199,1199,1199,1199,1199,1199,1199,1199,1199,1199,1199,1199,1199,1214,1214,1214,1214,1214,1214,1229,1229,1229,1229,1229,1229,1229,1229,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1264,1264,1264,1289,1289,1289,1289,1289,1289,1289,1289,1289,1289,1289,1289,1289,1289,1289,1289,1289,1314,1314,1324,1324,1324,1324,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1344,1344,1344,1344,1344,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1364,1364,1364,1364,1364,1364,1364,1364,1364,1364,1364,1364,1374,1374,1374,1384,1384,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1404,1404,1404,1404,1404,1404,1404,1404,1404,1404,1414,1414,1414,1414,1424,1424,1424,1424,1424,1424];
+                    StackExchange.user.renderMiniGraph(graphData);
+                
+
+                    StackExchange.user.userCardMessages.nextPrivInfo = [
+                        '<h4 class="popup-title">Create new tags</h4>',
+                        '<div class="popup-white">',
+                            '<p>Add new tags to the site</p>',
+                            '<div class="actions">',
+                                '<span class="rep-number">1,424/1,500 Rep.</span>',
+                                '<a href="/help/privileges/create-tags" class="s-btn s-btn__primary" title="Learn more">Learn more</a>',
+                            '</div>',
+                        '</div>'
+                    ].join('');
+                        });
+    </script>`,
 		[]json.RawMessage{
-			[]byte("{}"),
+			[]byte(`[]`),
+			[]byte(`[984,984,1019,1019,1029,1029,1029,1029,1029,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1042,1044,1044,1044,1044,1044,1044,1044,1044,1044,1044,1044,1044,1044,1069,1069,1069,1069,1069,1069,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1124,1134,1134,1134,1134,1134,1134,1144,1144,1144,1144,1144,1144,1144,1144,1154,1154,1154,1154,1154,1154,1154,1154,1164,1164,1189,1189,1199,1199,1199,1199,1199,1199,1199,1199,1199,1199,1199,1199,1199,1199,1214,1214,1214,1214,1214,1214,1229,1229,1229,1229,1229,1229,1229,1229,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1239,1264,1264,1264,1289,1289,1289,1289,1289,1289,1289,1289,1289,1289,1289,1289,1289,1289,1289,1289,1289,1314,1314,1324,1324,1324,1324,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1334,1344,1344,1344,1344,1344,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1354,1364,1364,1364,1364,1364,1364,1364,1364,1364,1364,1364,1364,1374,1374,1374,1384,1384,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1394,1404,1404,1404,1404,1404,1404,1404,1404,1404,1404,1414,1414,1414,1414,1424,1424,1424,1424,1424,1424]`),
+			[]byte(`["<h4 class=\"popup-title\">Create new tags</h4>","<div class=\"popup-white\">","<p>Add new tags to the site</p>","<div class=\"actions\">","<span class=\"rep-number\">1,424/1,500 Rep.</span>","<a href=\"/help/privileges/create-tags\" class=\"s-btn s-btn__primary\" title=\"Learn more\">Learn more</a>","</div>","</div>"]`),
+		},
+	},
+	{`["<h4 class=\"popup-title\">Create new tags</h4>","<div class=\"popup-white\">","<p>Add new tags to the site</p>","<div class=\"actions\">","<span class=\"rep-number\">1,424/1,500 Rep.</span>","<a href=\"/help/privileges/create-tags\" class=\"s-btn s-btn__primary\" title=\"Learn more\">Learn more</a>","</div>","</div>"]`,
+
+		[]json.RawMessage{
+			[]byte(`["<h4 class=\"popup-title\">Create new tags</h4>","<div class=\"popup-white\">","<p>Add new tags to the site</p>","<div class=\"actions\">","<span class=\"rep-number\">1,424/1,500 Rep.</span>","<a href=\"/help/privileges/create-tags\" class=\"s-btn s-btn__primary\" title=\"Learn more\">Learn more</a>","</div>","</div>"]`),
 		},
 	},
 	{
-		strings.Repeat("[", 100) + "]",
+		`StackExchange.user.userCardMessages.nextPrivInfo = [
+                        '<h4 class="popup-title">Create new tags</h4>',
+                        '<div class="popup-white">',
+                            '<p>Add new tags to the site</p>',
+                            '<div class="actions">',
+                                '<span class="rep-number">1,424/1,500 Rep.</span>',
+                                '<a href="/help/privileges/create-tags" class="s-btn s-btn__primary" title="Learn more">Learn more</a>',
+                            '</div>',
+                        '</div>'
+                    ].join('');`,
 		[]json.RawMessage{
-			[]byte("[]"),
+			[]byte(`["<h4 class=\"popup-title\">Create new tags</h4>","<div class=\"popup-white\">","<p>Add new tags to the site</p>","<div class=\"actions\">","<span class=\"rep-number\">1,424/1,500 Rep.</span>","<a href=\"/help/privileges/create-tags\" class=\"s-btn s-btn__primary\" title=\"Learn more\">Learn more</a>","</div>","</div>"]`),
 		},
 	},
 	{
-		"[\"" + strings.Repeat("long string ", 100) + "]",
-		nil,
+		`[15, 17, -3]`,
+		[]json.RawMessage{
+			[]byte(`[15,17,-3]`),
+		},
 	},
 	{
 		// In JS, we can escape a ` in a template literal
@@ -446,6 +487,22 @@ var testData = []struct {
 		`{expr: null || "fallback string" }`,
 		nil,
 	},
+	{
+		strings.Repeat("{", 250) + strings.Repeat("}", 100),
+		[]json.RawMessage{
+			[]byte("{}"),
+		},
+	},
+	{
+		strings.Repeat("[", 100) + "]",
+		[]json.RawMessage{
+			[]byte("[]"),
+		},
+	},
+	{
+		"[\"" + strings.Repeat("long string ", 100) + "]",
+		nil,
+	},
 }
 
 type infiniteReader struct {
@@ -532,6 +589,10 @@ var dyckReaderTestdata = []struct {
 		"[` 'quotes' inside of \"other quotes\"`, 'but wait, there are `more`']]]]]]]]]]]]]]}]]",
 		"[` 'quotes' inside of \"other quotes\"`, 'but wait, there are `more`']",
 	},
+	{
+		"[1,2,3,4,5,6,7,8,9,10];",
+		"[1,2,3,4,5,6,7,8,9,10]",
+	},
 }
 
 func TestDyckReader(t *testing.T) {
@@ -543,28 +604,97 @@ func TestDyckReader(t *testing.T) {
 				return
 			}
 
-			var infiniteReader = &infiniteReader{
-				initial: strings.NewReader(tt.input),
-				rest:    []byte("this will be repeated forever "),
-			}
-
 			// We want to make sure that this reader always terminates
 			// after the first JSON object/array was read
 			var r = &javaScriptDyckReader{
-				underlyingReader: infiniteReader,
+				underlyingReader: &infiniteReader{
+					initial: strings.NewReader(tt.input),
+					rest:    []byte("this will be repeated forever "),
+				},
 			}
 
-			var buf bytes.Buffer
+			err := iotest.TestReader(r, []byte(tt.want))
 
-			_, err := io.CopyBuffer(&buf, r, make([]byte, 32))
+			// var buf bytes.Buffer
+
+			// _, err := io.CopyBuffer(&buf, r, make([]byte, 32))
+			// if err != nil {
+			// 	panic(err)
+			// }
+
+			// value := buf.Bytes()
+			// if !bytes.Equal([]byte(tt.want), value) {
+			if err != nil {
+				t.Errorf("Invalid JavaScript dyckreader implementation: %s", err.Error())
+			}
+		})
+	}
+}
+
+func TestResettableRuneBuffer(t *testing.T) {
+	for _, tt := range dyckReaderTestdata {
+		t.Run(t.Name(), func(t *testing.T) {
+			var r = &resettableRuneBuffer{
+				normalBuffer: bufio.NewReader(strings.NewReader(tt.input)),
+			}
+
+			r.MarkStart()
+
+			err := iotest.TestReader(r, []byte(tt.input))
+			if err != nil {
+				t.Errorf("Invalid resettableRuneBuffer implementation (initial read): %s", err.Error())
+			}
+
+			err = r.ReturnAndSkip(len(tt.input) / 2)
 			if err != nil {
 				panic(err)
 			}
 
-			value := buf.Bytes()
-			if !bytes.Equal([]byte(tt.want), value) {
-				t.Errorf("Invalid JavaScript dyckreader implementation: wanted %s, got %s", string(tt.want), string(value))
+			r.MarkEnd()
+
+			err = iotest.TestReader(r, []byte(tt.input[len(tt.input)/2:]))
+			if err != nil {
+				t.Errorf("Invalid resettableRuneBuffer implementation (after returning): %s", err.Error())
 			}
 		})
+	}
+}
+
+// Test to check if the example program still works
+func TestStackOverflow(t *testing.T) {
+	// Running in GitHub actions? Skip this
+	if os.Getenv("CI") == "true" {
+		t.Skip()
+	}
+
+	resp, err := http.Get("https://stackoverflow.com/users/5728357/xarantolus?tab=topactivity")
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	var yValues []float64
+
+	err = Reader(resp.Body, func(b []byte) error {
+		if b[0] == '{' {
+			return nil
+		}
+
+		// Try to unmarshal
+		err := json.Unmarshal(b, &yValues)
+		if err == nil && len(yValues) > 10 {
+			// If it was successful, we stop parsing
+			return ErrStop
+		}
+
+		// continue with next object
+		return nil
+	})
+	if err != nil {
+		panic("cannot extract JSON objects: " + err.Error())
+	}
+
+	if len(yValues) <= 10 {
+		t.Errorf("Couldn't find JSON data: len(yValues) = %d", len(yValues))
 	}
 }
