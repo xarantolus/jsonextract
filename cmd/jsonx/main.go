@@ -36,7 +36,7 @@ func main() {
 
 	// Check if it's an URL or file and set reader accordingly
 	u, err := url.ParseRequestURI(arg)
-	if err == nil {
+	if err == nil && (u.Scheme == "http" || u.Scheme == "https") {
 		// If yes, we download it
 		resp, err := http.Get(u.String())
 		if err != nil {
