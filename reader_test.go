@@ -531,7 +531,7 @@ func (i *infiniteReader) Read(p []byte) (n int, err error) {
 	}
 }
 
-var dyckReaderTestdata = []struct {
+var readerTestData = []struct {
 	input string
 	want  string
 }{
@@ -595,44 +595,8 @@ var dyckReaderTestdata = []struct {
 	},
 }
 
-func TestDyckReader(t *testing.T) {
-	for _, tt := range dyckReaderTestdata {
-		t.Run(t.Name(), func(t *testing.T) {
-
-			if strings.Count(tt.input, "{") > strings.Count(tt.input, "}") ||
-				strings.Count(tt.input, "[") > strings.Count(tt.input, "]") {
-				return
-			}
-
-			// We want to make sure that this reader always terminates
-			// after the first JSON object/array was read
-			var r = &javaScriptDyckReader{
-				underlyingReader: &infiniteReader{
-					initial: strings.NewReader(tt.input),
-					rest:    []byte("this will be repeated forever "),
-				},
-			}
-
-			err := iotest.TestReader(r, []byte(tt.want))
-
-			// var buf bytes.Buffer
-
-			// _, err := io.CopyBuffer(&buf, r, make([]byte, 32))
-			// if err != nil {
-			// 	panic(err)
-			// }
-
-			// value := buf.Bytes()
-			// if !bytes.Equal([]byte(tt.want), value) {
-			if err != nil {
-				t.Errorf("Invalid JavaScript dyckreader implementation: %s", err.Error())
-			}
-		})
-	}
-}
-
 func TestResettableRuneBuffer(t *testing.T) {
-	for _, tt := range dyckReaderTestdata {
+	for _, tt := range readerTestData {
 		t.Run(t.Name(), func(t *testing.T) {
 			var r = &resettableRuneBuffer{
 				normalBuffer: bufio.NewReader(strings.NewReader(tt.input)),

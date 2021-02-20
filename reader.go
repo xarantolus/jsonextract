@@ -264,9 +264,7 @@ func readJSObject(r io.Reader) (output []byte, readInputBytes int, err error) {
 	// Since js.Lexer actually doesn't stream, we force it to only extract one object
 	// by preprocessing the data while it is being read. The reader will return io.EOF
 	// when it detects that the object opened by the first character is closed
-	lex := js.NewLexer(&javaScriptDyckReader{
-		underlyingReader: r,
-	})
+	lex := js.NewLexer(r)
 
 	// buf stores the bytes that should be returned in output
 	var buf = new(bytes.Buffer)
@@ -405,110 +403,4 @@ loop:
 		return buf.Bytes(), readInputBytes, nil
 	}
 	return nil, 0, err
-}
-
-type javaScriptDyckReader struct {
-	// The io.Reader we want to limit
-	underlyingReader io.Reader
-
-	// The last byte we read
-	lastByte byte
-
-	// start character, should be either '{' or '['
-	startCharacter byte
-
-	// which character was used to open the current string
-	currentlyOpenedString rune
-
-	// the current level of braces we're on
-	level int
-
-	// if we have found the end before
-	foundEnd bool
-}
-
-func (j *javaScriptDyckReader) Read(p []byte) (n int, err error) {
-	if j.foundEnd {
-		return 0, io.EOF
-	}
-
-	n, err = j.underlyingReader.Read(p)
-	if err != nil && err != io.EOF || n == 0 {
-		return n, err
-	}
-
-	if j.startCharacter == 0 {
-		j.startCharacter = p[0]
-
-		if j.startCharacter != openObject && j.startCharacter != openArray {
-			panic("javaScriptDyckReader expects first byte to be either '{' or '[', but was " + string(p[0]))
-		}
-	}
-
-	// We basically want to count level depending on opening/closing braces,
-	// but we have to make sure we know when strings open/close to keep track of it correctly
-	for i, by := range p[:n] {
-		switch by {
-		case '"':
-			if j.currentlyOpenedString == '`' || j.currentlyOpenedString == '\'' {
-				break
-			}
-
-			if j.lastByte == '\\' && j.currentlyOpenedString == '"' {
-				break
-			}
-
-			if j.currentlyOpenedString == 0 {
-				j.currentlyOpenedString = '"'
-			} else {
-				j.currentlyOpenedString = 0
-			}
-		case '\'':
-			if j.currentlyOpenedString == '`' || j.currentlyOpenedString == '"' {
-				break
-			}
-
-			if j.lastByte == '\\' && j.currentlyOpenedString == '\'' {
-				break
-			}
-
-			if j.currentlyOpenedString == 0 {
-				j.currentlyOpenedString = '\''
-			} else {
-				j.currentlyOpenedString = 0
-			}
-		case '`':
-			if j.currentlyOpenedString == '"' || j.currentlyOpenedString == '\'' {
-				break
-			}
-
-			if j.lastByte == '\\' && j.currentlyOpenedString == '`' {
-				break
-			}
-
-			if j.currentlyOpenedString == 0 {
-				j.currentlyOpenedString = '`'
-			} else {
-				j.currentlyOpenedString = 0
-			}
-		case j.startCharacter:
-			if j.currentlyOpenedString == 0 {
-				j.level++
-			}
-		case matchingBracket[j.startCharacter]:
-			if j.currentlyOpenedString == 0 {
-				j.level--
-
-				// We found the end of this dyck word
-				if j.level == 0 {
-					j.foundEnd = true
-					// Now we cut sharply after this word (including the last bracket, of course)
-					return i + 1, io.EOF
-				}
-			}
-		}
-		j.lastByte = by
-	}
-
-	return
 }
