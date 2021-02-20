@@ -10,7 +10,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/tdewolff/parse/js"
+	"github.com/xarantolus/jsonextract/parsefork/js"
 )
 
 // Opening Characters as defined by the JSON spec
@@ -235,10 +235,12 @@ func (s *resettableRuneBuffer) ReturnAndSkip(offset int) (err error) {
 	return
 }
 
-var jsIdentifiers = map[string]bool{
-	"true":  true,
-	"false": true,
-	"null":  true,
+var jsIdentifiers = map[string][]byte{
+	"true":  []byte("true"),
+	"false": []byte("false"),
+	"null":  []byte("null"),
+	// Special case: treat undefined as null
+	"undefined": []byte("null"),
 }
 
 // singleQuoteReplacer replaces a single quoted string to be double-quoted
@@ -297,17 +299,20 @@ loop:
 
 		readInputBytes += len(text)
 
-		switch tt {
-		case js.SingleLineCommentToken, js.MultiLineCommentToken, js.WhitespaceToken, js.LineTerminatorToken:
+		switch {
+		case isIgnoredToken(tt):
 			// Ignore tokens that are not needed for JSON.
 			// We must continue so they are not seen as last written byte
 			continue
-		case js.IdentifierToken:
-			// Quote keys/values, except if they are special
-			if jsIdentifiers[string(text)] {
-				buf.Write(text)
+		case js.IsIdentifier(tt):
+			// Certain keywords are reserved in JSON. As a special case,
+			// we replace "undefined" with "null"
+			if val, ok := jsIdentifiers[string(text)]; ok {
+				buf.Write(val)
 			} else {
-				// Quote this identifier, as in interpret it as string
+				// This is reached if we have an unquoted key in an object, e.g.
+				//     { key: "value" }
+				// We want to quote this identifier, as in marshal it into a string
 				data, merr := json.Marshal(string(text))
 				if merr != nil {
 					err = merr
@@ -315,7 +320,24 @@ loop:
 				}
 				buf.Write(data)
 			}
-		case js.PunctuatorToken:
+		case tt == js.DivToken || tt == js.DivEqToken:
+			// It is important that this comes before the IsPunctuator check
+			// Basically if we find a '/', we suspect it's a regex
+			tt, text = lex.RegExp()
+			if tt != js.RegExpToken {
+				err = fmt.Errorf("expected regex token when starting with '/', but was %s", tt.String())
+				break loop
+			}
+
+			// Regex patterns are just escaped and treated as strings,
+			// no need to skip the entire object
+			data, merr := json.Marshal(string(text))
+			if merr != nil {
+				err = merr
+				break loop
+			}
+			buf.Write(data)
+		case js.IsPunctuator(tt):
 			if len(text) > 1 {
 				err = fmt.Errorf("unexpected token %q in JS value", string(text))
 				break loop
@@ -355,7 +377,7 @@ loop:
 				// This could e.g. be a "-" in front of a number
 				buf.Write(text)
 			}
-		case js.StringToken:
+		case tt == js.StringToken:
 			// Special quotes must be handled
 			if text[0] == '\'' {
 				buf.WriteString(singleQuoteReplacer.Replace(string(text)))
@@ -372,7 +394,7 @@ loop:
 
 			err = fmt.Errorf("unsupported string type (text: %s)", string(text))
 			break loop
-		case js.TemplateToken:
+		case tt == js.TemplateToken:
 			var toEscape = templateQuoteReplacer.Replace(string(text[1 : len(text)-1]))
 
 			data, merr := json.Marshal(string(toEscape))
@@ -381,15 +403,6 @@ loop:
 				break loop
 			}
 
-			buf.Write(data)
-		case js.RegexpToken:
-			// Regex patterns are just escaped and treated as strings,
-			// no need to skip the entire object
-			data, merr := json.Marshal(string(text))
-			if merr != nil {
-				err = merr
-				break loop
-			}
 			buf.Write(data)
 		default:
 			// Basically only numbers are left, i guess?
@@ -403,4 +416,8 @@ loop:
 		return buf.Bytes(), readInputBytes, nil
 	}
 	return nil, 0, err
+}
+
+func isIgnoredToken(tt js.TokenType) bool {
+	return tt == js.WhitespaceToken || tt == js.LineTerminatorToken || tt == js.CommentToken || tt == js.CommentLineTerminatorToken
 }

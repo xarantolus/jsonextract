@@ -105,6 +105,7 @@ results in
 * When extracting objects from JavaScript files, you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indices being used in the script. You have to filter these out yourself.
 
 ### Changelog
+* **v1.2.0**: [Fork](parsefork/) the [JS lexer](https://github.com/tdewolff/parse) and make it use the underlying streaming lexer that was already in that package. That's a bit faster and prevents many unnecessary resets. This also makes it possible to extract from *very* large files with a small memory footprint.
 * **v1.1.11**: No longer stop the lexer from reading too much, as that didn't work that good
 * **v1.1.10**: Stops the JS lexer from reading all data from input at once, prevents expensive resets
 * **v1.1.9**: JS Regex patterns are now returned as strings
@@ -118,6 +119,9 @@ results in
 * **v1.1.1**: Also turn single-quoted strings into valid JSON
 * **v1.1.0**: Now supports anything that *looks like* JSON, which also includes JavaScript object declarations
 * **v1.0.0**: Initial version, supports only JSON
+
+### Thanks
+Thanks to everyone who made [the `parse` package](https://github.com/tdewolff/parse) possible. Without it, creating this extractor would have been a lot harder.
 
 ### [License](LICENSE)
 This is free as in freedom software. Do whatever you like with it.

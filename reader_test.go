@@ -32,6 +32,9 @@ func TestCallback(t *testing.T) {
 			var calls int
 
 			err := Reader(strings.NewReader(tt.arg), func(b []byte) error {
+				if calls == len(tt.want) {
+					t.Errorf("Callback should be called %d times, but was called once more", len(tt.want))
+				}
 				if !bytes.Equal(b, tt.want[calls]) {
 					t.Errorf("Reader() callback %d = %s, want %s", calls, string(b), string(tt.want[calls]))
 				}
@@ -194,6 +197,30 @@ var testData = []struct {
 	arg  string
 	want []json.RawMessage
 }{
+	{
+		"{key: true}",
+		[]json.RawMessage{
+			[]byte(`{"key":true}`),
+		},
+	},
+	{
+		"{true: 30}",
+		nil,
+	},
+	{
+		`let re = [/ab+c/];`,
+		[]json.RawMessage{
+			[]byte(`["/ab+c/"]`),
+		},
+	},
+	{
+		// Regex fields should be escaped as a normal string,
+		// no need to throw away useful data that we might want to extract
+		`{"key": /test/i, useful_data: { "a": "b" }, another_value_we_might_want:"c" }`,
+		[]json.RawMessage{
+			[]byte(`{"key":"/test/i","useful_data":{"a":"b"},"another_value_we_might_want":"c"}`),
+		},
+	},
 	{
 		`
 		[]
@@ -469,14 +496,6 @@ var testData = []struct {
 		`<script>var arr = ["one", 'two &amp; three', "four", ];</script>`,
 		[]json.RawMessage{
 			[]byte(`["one","two &amp; three","four"]`),
-		},
-	},
-	{
-		// Regex fields should be escaped as a normal string,
-		// no need to throw away useful data that we might want to extract
-		`{"key":  /test/i, useful_data: { "a": "b" }, another_value_we_might_want:"c" }`,
-		[]json.RawMessage{
-			[]byte(`{"key":"/test/i","useful_data":{"a":"b"},"another_value_we_might_want":"c"}`),
 		},
 	},
 	{
