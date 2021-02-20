@@ -105,6 +105,7 @@ results in
 * When extracting objects from JavaScript files, you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indices being used in the script. You have to filter these out yourself.
 
 ### Changelog
+* **v1.1.11**: No longer stop the lexer from reading too much, as that didn't work that good
 * **v1.1.10**: Stops the JS lexer from reading all data from input at once, prevents expensive resets
 * **v1.1.9**: JS Regex patterns are now returned as strings
 * **v1.1.8**: Fix bug where template literals were interpreted the wrong way when certain escape sequences were present
