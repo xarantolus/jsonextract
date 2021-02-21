@@ -325,7 +325,7 @@ loop:
 			// Basically if we find a '/', we suspect it's a regex
 			tt, text = lex.RegExp()
 			if tt != js.RegExpToken {
-				err = fmt.Errorf("expected regex token when starting with '/', but was %s", tt.String())
+				err = fmt.Errorf("expected regex token when starting with '/', but was %s (lex err: %w)", tt.String(), lex.Err())
 				break loop
 			}
 
