@@ -10,7 +10,8 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/xarantolus/jsonextract/parsefork/js"
+	"github.com/tdewolff/parse/v2"
+	"github.com/tdewolff/parse/v2/js"
 )
 
 // Opening Characters as defined by the JSON spec
@@ -43,9 +44,7 @@ type JSONCallback func([]byte) error
 func Reader(reader io.Reader, callback JSONCallback) (err error) {
 
 	// Need to buffer in order to be able to unread invalid sections
-	buffered := resettableRuneBuffer{
-		normalBuffer: bufio.NewReader(reader),
-	}
+	buffered := newResettableBuffer(reader)
 
 	var r rune
 
@@ -75,7 +74,7 @@ func Reader(reader io.Reader, callback JSONCallback) (err error) {
 
 			// Now we interpret the next bytes as JS object and convert them into JSON
 			// since readJSObject might return invalid JSON, we must check the output
-			msg, readByteCount, err = readJSObject(&buffered)
+			msg, readByteCount, err = readJSObject(buffered)
 
 			if err != nil || !json.Valid(msg) {
 				// OK, so we tried to parse, but it didn't work.
@@ -133,21 +132,32 @@ type resettableRuneBuffer struct {
 	normalBuffer *bufio.Reader
 
 	// bufBefore stores all data that was read until we return to the beginning of an object
-	bufBefore bytes.Buffer
+	bufBefore *bytes.Buffer
 
 	// returnBuffer contains the content of bufBefore after we returned to a certain part we read before
-	returnBuffer bytes.Buffer
+	returnBuffer *bytes.Buffer
 
 	// enableReturn defines whether the buffer should log what is read through it.
 	// if true, one can return to any position after it was enabled
 	enableReturn bool
 }
 
+func newResettableBuffer(r io.Reader) *resettableRuneBuffer {
+	bir, ok := r.(*bufio.Reader)
+	if !ok {
+		bir = bufio.NewReader(r)
+	}
+
+	return &resettableRuneBuffer{
+		normalBuffer: bir,
+		returnBuffer: new(bytes.Buffer),
+		bufBefore:    new(bytes.Buffer),
+	}
+}
+
 // Read implements io.Reader
 func (s *resettableRuneBuffer) Read(p []byte) (n int, err error) {
-	if s.returnBuffer.Len() != 0 {
-		n, _ = s.returnBuffer.Read(p)
-	}
+	n, _ = s.returnBuffer.Read(p)
 
 	if n < len(p) {
 		n2, err2 := s.normalBuffer.Read(p[n:])
@@ -199,7 +209,21 @@ func (s *resettableRuneBuffer) ReturnAndSkipOne() (err error) {
 	// Skip one rune
 	_, _, err = s.returnBuffer.ReadRune()
 
-	s.bufBefore.Reset()
+	s.bufBefore = new(bytes.Buffer)
+
+	return
+}
+
+// ReturnAndSkip returns the buffer to the last reset (or initial) from an outside perspective,
+// except that it skips `offset` bytes from the input
+func (s *resettableRuneBuffer) ReturnAndSkip(offset int) (err error) {
+	s.returnBuffer = s.bufBefore
+
+	if offset > 0 {
+		_, err = io.CopyN(ioutil.Discard, s.returnBuffer, int64(offset))
+	}
+
+	s.bufBefore = new(bytes.Buffer)
 
 	return
 }
@@ -219,20 +243,6 @@ func (s *resettableRuneBuffer) MarkEnd() {
 	if s.bufBefore.Len() != 0 {
 		panic("wrong use of resettableRuneBuffer")
 	}
-}
-
-// ReturnAndSkip returns the buffer to the last reset (or initial) from an outside perspective,
-// except that it skips `offset` bytes from the input
-func (s *resettableRuneBuffer) ReturnAndSkip(offset int) (err error) {
-	s.returnBuffer = s.bufBefore
-
-	if offset > 0 {
-		_, err = io.CopyN(ioutil.Discard, &s.returnBuffer, int64(offset))
-	}
-
-	s.bufBefore = bytes.Buffer{}
-
-	return
 }
 
 var jsIdentifiers = map[string][]byte{
@@ -263,10 +273,9 @@ var templateQuoteReplacer = strings.NewReplacer(
 // Input data should either already be JSON or a JavaScript object declaration.
 // Please note that output might not be valid JSON and should be checked using json.Valid()
 func readJSObject(r io.Reader) (output []byte, readInputBytes int, err error) {
-	// Since js.Lexer actually doesn't stream, we force it to only extract one object
-	// by preprocessing the data while it is being read. The reader will return io.EOF
-	// when it detects that the object opened by the first character is closed
-	lex := js.NewLexer(r)
+	// Note: the current implementation of NewInput reads all bytes in the reader,
+	// which is problematic for large files
+	lex := js.NewLexer(parse.NewInput(r))
 
 	// buf stores the bytes that should be returned in output
 	var buf = new(bytes.Buffer)
