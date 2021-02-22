@@ -106,7 +106,7 @@ no problem`
 results in
 
 ```json
-{"key":"value","num":295.2,"obj":{"quoted":325,"other quotes":true,"unquoted":"test"},"dec":21,"hex":21,"oct":21,"bin":21,"bigint":21,"udef":null,"lastvalue":"multiline strings are\nno problem"
+{"key":"value","num":295.2,"obj":{"quoted":325,"other quotes":true,"unquoted":"test"},"dec":21,"hex":21,"oct":21,"bin":21,"bigint":21,"udef":null,"lastvalue":"multiline strings are\nno problem"}
 ```
 
 
