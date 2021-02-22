@@ -88,15 +88,18 @@ This means that text like the following, which is definitely not valid JSON, can
 		unquoted: 'test', // This trailing comma will be removed
 	},
 
+	// Undefined will be interpreted as null
+	"udef": undefined,
+
 	`lastvalue`: `multiline strings are
 no problem`
 }
 ```
 
-results in 
+results in
 
 ```json
-{"key":"value","num":295.2,"obj":{"quoted":325,"other quotes":true,"unquoted":"test"},"lastvalue":"multiline strings are\nno problem"}
+{"key":"value","num":295.2,"obj":{"quoted":325,"other quotes":true,"unquoted":"test"},"udef":null,"lastvalue":"multiline strings are\nno problem"}
 ```
 
 

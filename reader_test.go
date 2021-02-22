@@ -198,6 +198,12 @@ var testData = []struct {
 	want []json.RawMessage
 }{
 	{
+		`{[[undefined, null, ]]}`,
+		[]json.RawMessage{
+			[]byte(`[[null,null]]`),
+		},
+	},
+	{
 		`<script>
         StackExchange.ready(function () {
 
