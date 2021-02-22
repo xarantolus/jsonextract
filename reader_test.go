@@ -7,9 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/iotest"
@@ -19,7 +21,7 @@ func TestReader(t *testing.T) {
 	for _, tt := range testData {
 		t.Run(t.Name(), func(t *testing.T) {
 			if gotExtracted, _ := ReaderObjects(strings.NewReader(tt.arg)); !reflect.DeepEqual(gotExtracted, tt.want) {
-				t.Errorf("ReaderObjects() = %v, want %v", convert(gotExtracted), convert(tt.want))
+				t.Errorf("ReaderObjects(%q) = %v, want %v", tt.arg, convert(gotExtracted), convert(tt.want))
 			}
 		})
 	}
@@ -197,6 +199,49 @@ var testData = []struct {
 	arg  string
 	want []json.RawMessage
 }{
+	{
+		`{bigint: 50n}`,
+		[]json.RawMessage{
+			[]byte(`{"bigint":50}`),
+		},
+	},
+	{
+		`{bigint: 5030n}`,
+		[]json.RawMessage{
+			[]byte(`{"bigint":5030}`),
+		},
+	},
+	{
+		`{bigint: 505050n}`,
+		[]json.RawMessage{
+			[]byte(`{"bigint":505050}`),
+		},
+	},
+	{
+		// -0x505050n sadly does not work because the lexer doesn't support it
+		`{bigint: -0x505050}`,
+		[]json.RawMessage{
+			[]byte(`{"bigint":-5263440}`),
+		},
+	},
+	{
+		`[-1, 0, 30, +15]`,
+		[]json.RawMessage{
+			[]byte(`[-1,0,30,15]`),
+		},
+	},
+	{
+		`[-15, -30, -0, 14, 3]`,
+		[]json.RawMessage{
+			[]byte(`[-15,-30,-0,14,3]`),
+		},
+	},
+	{
+		`[-0x3, -0o30, 0x0000000000, 0o0000000000, 0x14, 0o3]`,
+		[]json.RawMessage{
+			[]byte(`[-3,-24,0,0,20,3]`),
+		},
+	},
 	{
 		`{[[undefined, null, ]]}`,
 		[]json.RawMessage{
@@ -563,6 +608,12 @@ var testData = []struct {
 		"[\"" + strings.Repeat("long string ", 100) + "]",
 		nil,
 	},
+	{
+		`{"test": 0x3}`,
+		[]json.RawMessage{
+			[]byte(`{"test":3}`),
+		},
+	},
 }
 
 type infiniteReader struct {
@@ -793,5 +844,72 @@ func TestStackOverflow(t *testing.T) {
 
 	if len(yValues) <= 10 {
 		t.Errorf("Couldn't find JSON data: len(yValues) = %d", len(yValues))
+	}
+}
+
+func Test_transformNumber(t *testing.T) {
+	tests := []struct {
+		arg  string
+		want string
+	}{
+		{
+			"100",
+			"100",
+		},
+		{
+			// Note: while this works with this function, the lexer doesn't recognize these numbers
+			// and returns an error for them
+			"1_00",
+			"100",
+		},
+		{
+			"0x0000000000000000000045",
+			"69",
+		},
+		{
+			strings.Repeat("0", 100),
+			"0",
+		},
+		{
+			// Cannot be parsed, but will still be returned
+			"11823701928340192387409128357019283740912837409128374901263478912634978127356981273489127346",
+			"11823701928340192387409128357019283740912837409128374901263478912634978127356981273489127346",
+		},
+		{
+			"0x30",
+			"48",
+		},
+		{
+			strconv.FormatUint(math.MaxUint64, 10),
+			strconv.FormatUint(math.MaxUint64, 10),
+		},
+		{
+			"0b" + strconv.FormatUint(math.MaxUint64, 2),
+			strconv.FormatUint(math.MaxUint64, 10),
+		},
+		{
+			"0x" + strconv.FormatUint(math.MaxUint64, 16),
+			strconv.FormatUint(math.MaxUint64, 10),
+		},
+		{
+			"0o" + strconv.FormatUint(math.MaxUint64, 8),
+			strconv.FormatUint(math.MaxUint64, 10),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(t.Name(), func(t *testing.T) {
+			if got := transformNumber([]byte(tt.arg)); !bytes.Equal(got, []byte(tt.want)) {
+				t.Errorf("transformDecimalNumber() = %v, want %v", string(got), string(tt.want))
+			}
+
+			// Also test negative numbers
+			if got := transformNumber([]byte("-" + tt.arg)); !bytes.Equal(got, []byte("-"+tt.want)) {
+				t.Errorf("transformDecimalNumber() = %v, want %v", string(got), string("-"+tt.want))
+			}
+			// A leading '+' should be removed
+			if got := transformNumber([]byte("+" + tt.arg)); !bytes.Equal(got, []byte(tt.want)) {
+				t.Errorf("transformDecimalNumber() = %v, want %v", string(got), string(tt.want))
+			}
+		})
 	}
 }

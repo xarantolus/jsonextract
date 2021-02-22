@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"strconv"
 	"strings"
 
 	"github.com/tdewolff/parse/v2"
@@ -291,6 +292,7 @@ func readJSObject(r io.Reader) (output []byte, readInputBytes int, err error) {
 	// It is used for detecting and correcting trailing commas
 	var lastByte byte
 
+	var merr error
 loop:
 	for {
 		tt, text := lex.Next()
@@ -322,12 +324,12 @@ loop:
 				// This is reached if we have an unquoted key in an object, e.g.
 				//     { key: "value" }
 				// We want to quote this identifier, as in marshal it into a string
-				data, merr := json.Marshal(string(text))
+				text, merr = json.Marshal(string(text))
 				if merr != nil {
 					err = merr
 					break loop
 				}
-				buf.Write(data)
+				buf.Write(text)
 			}
 		case tt == js.DivToken || tt == js.DivEqToken:
 			// It is important that this comes before the IsPunctuator check
@@ -340,12 +342,12 @@ loop:
 
 			// Regex patterns are just escaped and treated as strings,
 			// no need to skip the entire object
-			data, merr := json.Marshal(string(text))
+			text, merr = json.Marshal(string(text))
 			if merr != nil {
 				err = merr
 				break loop
 			}
-			buf.Write(data)
+			buf.Write(text)
 		case js.IsPunctuator(tt):
 			if len(text) > 1 {
 				err = fmt.Errorf("unexpected token %q in JS value", string(text))
@@ -382,6 +384,13 @@ loop:
 				if level == 0 {
 					break loop
 				}
+			case '+':
+				if '0' <= lastByte && lastByte <= '9' {
+					err = fmt.Errorf("cannot use '+' to add numbers/strings")
+					break loop
+				}
+				// continue with buf.Write
+				fallthrough
 			default:
 				// This could e.g. be a "-" in front of a number
 				buf.Write(text)
@@ -406,15 +415,34 @@ loop:
 		case tt == js.TemplateToken:
 			var toEscape = templateQuoteReplacer.Replace(string(text[1 : len(text)-1]))
 
-			data, merr := json.Marshal(string(toEscape))
+			text, merr = json.Marshal(string(toEscape))
 			if merr != nil {
 				err = merr
 				break loop
 			}
 
-			buf.Write(data)
+			buf.Write(text)
+		case js.IsNumeric(tt):
+			// Not all JS numbers are valid JSON numbers, e.g. the following are valid in JS, but not JSON:
+			// +5, 0x3, 0o4, 0b1001, -0x3, 8n
+
+			// If the number starts with a '+', we already wrote it. Remove it again, as plus signs are not valid json numbers
+			if lastByte == '+' {
+				buf.Truncate(buf.Len() - 1)
+			}
+
+			switch tt {
+			case js.BigIntToken:
+				// BigIntegers can be written e.g. as "50n", "0x5n" etc.
+				text = bytes.TrimSuffix(text, []byte("n"))
+				fallthrough
+			default:
+				text = transformNumber(text)
+			}
+
+			buf.Write(text)
 		default:
-			// Basically only numbers are left, i guess?
+			// There shouldn't be much left. But in case it's valid JSON, we keep it
 			buf.Write(text)
 		}
 
@@ -429,4 +457,30 @@ loop:
 
 func isIgnoredToken(tt js.TokenType) bool {
 	return tt == js.WhitespaceToken || tt == js.LineTerminatorToken || tt == js.CommentToken || tt == js.CommentLineTerminatorToken
+}
+
+// transformNumber transforms the given number to a decimal number, if possible. Might return
+// invalid JSON data
+func transformNumber(number []byte) []byte {
+	var out = make([]byte, 0, len(number))
+
+	// "+"-Prefix is not valid JSON, just strip it
+	if number[0] == '+' {
+		number = number[1:]
+	} else if number[0] == '-' {
+		// Keep "-" sign
+		number = number[1:]
+		out = append(out, '-')
+	}
+
+	// Just parse the number. This also deals with leading zeros, all kinds of
+	// number literals (e.g. 1_00 == 100) etc.
+	ui, err := strconv.ParseUint(string(number), 0, 64)
+	if err != nil {
+		// This happens when the number is too big. We can still try if it's valid JSON, but if it contains anything special then it won't work
+		return append(out, number...)
+	}
+
+	// Now convert to decimal
+	return strconv.AppendUint(out, ui, 10)
 }

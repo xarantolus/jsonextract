@@ -88,6 +88,13 @@ This means that text like the following, which is definitely not valid JSON, can
 		unquoted: 'test', // This trailing comma will be removed
 	},
 
+	// JSON doesn't support all these number formats
+	"dec": 21,
+	"hex": 0x15,
+	"oct": 0o25,
+	"bin": 0b10101,
+	bigint: 21n,
+
 	// Undefined will be interpreted as null
 	"udef": undefined,
 
@@ -99,15 +106,17 @@ no problem`
 results in
 
 ```json
-{"key":"value","num":295.2,"obj":{"quoted":325,"other quotes":true,"unquoted":"test"},"udef":null,"lastvalue":"multiline strings are\nno problem"}
+{"key":"value","num":295.2,"obj":{"quoted":325,"other quotes":true,"unquoted":"test"},"dec":21,"hex":21,"oct":21,"bin":21,"bigint":21,"udef":null,"lastvalue":"multiline strings are\nno problem"
 ```
 
 
 ### Notes
-* While the functions take an `io.Reader` and stream data from it without buffering everything in memory, the underlying JS lexer uses `ioutil.ReadAll`. That means that this doesn't work well on files that are larger than memory
+* While the functions take an `io.Reader` and stream data from it without buffering everything in memory, the underlying JS lexer uses `ioutil.ReadAll`. That means that this doesn't work well on files that are larger than memory.
 * When extracting objects from JavaScript files, you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indices being used in the script. You have to filter these out yourself.
+* While this package supports most number formats, there are some that don't work because the lexer doesn't support them. One of them are underscores in numbers, e.g. in JS `2175` can be written as `2_175` or `0x8_7_f`, but that doesn't work here. Another example are numbers with a leading zero; they are rejected by the lexer because it's not clear if they should be interpreted as octal or decimal.
 
 ### Changelog
+* **v1.3.1**: Support more number formats by transforming them to decimal numbers, which are valid in JSON
 * **v1.3.0**: Return to non-streaming version that worked with all objects, the streaming version seemed to skip certain parts and thus wasn't very great
 * **v1.2.0**: Fork the [JS lexer](https://github.com/tdewolff/parse) and make it use the underlying streaming lexer that was already in that package. That's a bit faster and prevents many unnecessary resets. This also makes it possible to extract from *very* large files with a small memory footprint.
 * **v1.1.11**: No longer stop the lexer from reading too much, as that didn't work that good
