@@ -207,6 +207,23 @@ var testData = []struct {
 	want []json.RawMessage
 }{
 	{
+		"",
+		nil,
+	},
+	{
+		// This is quite ambigious, as that could either be a small array or the index.
+		"first[0]",
+		[]json.RawMessage{
+			[]byte(`[0]`),
+		},
+	},
+	{
+		"obj[{i: a}, j]",
+		[]json.RawMessage{
+			[]byte(`[{"i":"a"},"j"]`),
+		},
+	},
+	{
 		`{bigint: 50n}`,
 		[]json.RawMessage{
 			[]byte(`{"bigint":50}`),
@@ -226,19 +243,19 @@ var testData = []struct {
 	},
 	{
 		// -0x505050n sadly does not work because the lexer doesn't support it
-		`{bigint: -0x505050}`,
+		`{notbigint: -0x505050}`,
 		[]json.RawMessage{
-			[]byte(`{"bigint":-5263440}`),
+			[]byte(`{"notbigint":-5263440}`),
 		},
 	},
 	{
-		`[-1, 0, 30, +15]`,
+		`[-1, 0, 30, +15, 17n]`,
 		[]json.RawMessage{
-			[]byte(`[-1,0,30,15]`),
+			[]byte(`[-1,0,30,15,17]`),
 		},
 	},
 	{
-		`[-15, -30, -0, 14, 3]`,
+		`[-15, -30, -0n, 14, 3]`,
 		[]json.RawMessage{
 			[]byte(`[-15,-30,-0,14,3]`),
 		},
