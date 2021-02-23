@@ -14,11 +14,25 @@ func main() {
 	}
 	defer f.Close()
 
-	err = jsonextract.Reader(f, func(b []byte) error {
-		fmt.Println(string(b))
-		return nil
+	type quotedexample struct {
+		Quoted      *int   `json:"quoted"`
+		OtherQuotes bool   `json:"other quotes"`
+		Unquoted    string `json:"unquoted"`
+	}
+
+	var obj = quotedexample{}
+
+	err = jsonextract.Objects(f, []jsonextract.ObjectOption{
+		{
+			Keys: []string{"quoted", "other quotes"},
+			Callback: jsonextract.Unmarshal(&obj, func() bool {
+				return obj.Quoted != nil
+			}),
+		},
 	})
 	if err != nil {
-		panic("reader: " + err.Error())
+		panic("Object extraction: " + err.Error())
 	}
+
+	fmt.Printf("Extracted other quotes value: %v\n", obj.OtherQuotes)
 }
