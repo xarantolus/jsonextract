@@ -27,21 +27,24 @@ var matchingBracket = map[byte]byte{
 }
 
 var (
-	// ErrStop can be returned from a JSONCallback function to indicate that processing should stop at this object
+	// ErrStop can be returned from a JSONCallback function to indicate that processing should stop now
 	ErrStop = errors.New("stop processing json")
 )
 
-// JSONCallback is the callback function passed to Reader.
-// Found JSON objects will be passed to it as bytes.
+// JSONCallback is the callback function passed to Reader and ObjectOptions.
+//
+// Any JSON objects will be passed to it as bytes as defined by the function.
+//
 // If this function returns an error, processing will stop and return that error.
-// If the returned error is ErrStop, processing will stop but not return an error.
+// If the returned error is ErrStop, processing will stop and return the nil error.
 type JSONCallback func([]byte) error
 
 // Reader reads all JSON and JavaScript objects from the input and calls callback for each of them.
-// If callback returns an error, Reader will stop processing and return the error.
-// If the returned error is ErrStop, Reader will return nil instead of the error.
-// Please note that reader must return UTF-8 bytes, if you're not sure use the charset.NewReader
-// method to convert to the correct charset (https://pkg.go.dev/golang.org/x/net/html/charset#NewReader)
+//
+// Errors returned from the callback will stop the method.
+// The error will be returned, except if it is ErrStop which will cause the method to return nil.
+//
+// Please note that the reader must return UTF-8 bytes for this to work correctly.
 func Reader(reader io.Reader, callback JSONCallback) (err error) {
 
 	// Need to buffer in order to be able to unread invalid sections
@@ -117,14 +120,6 @@ func Reader(reader io.Reader, callback JSONCallback) (err error) {
 	}
 
 	return
-}
-
-// ReaderObjects takes the given io.Reader and reads all possible JSON and JavaScript objects it can find
-func ReaderObjects(reader io.Reader) (objects []json.RawMessage, err error) {
-	return objects, Reader(reader, func(b []byte) error {
-		objects = append(objects, b)
-		return nil
-	})
 }
 
 // resettableRuneBuffer allows reading from a buffer, then resetting certain parts

@@ -18,19 +18,19 @@ var (
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintln(flag.CommandLine.Output(), "Usage: jsonx <url/file>")
+		fmt.Fprintln(flag.CommandLine.Output(), "Usage: jsonx <url/file> [keys...]")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
 
-	// Need exactly one argument, either an URL or a file path
-	if flag.NArg() != 1 {
+	if flag.NArg() == 0 {
 		flag.Usage()
 		return
 	}
 
 	var (
 		arg    = flag.Arg(0)
+		keys   = flag.Args()[1:]
 		reader io.Reader
 	)
 
@@ -59,24 +59,30 @@ func main() {
 	// for callback limit
 	var callbackCount int
 
-	err = jsonextract.Reader(reader, func(b []byte) error {
+	var callback = func(b []byte) error {
 		callbackCount++
 
 		fmt.Println(string(b))
 
 		if callbackCount == *limit {
-
-			if callbackCount == 1 {
-				log.Println("Stopped extracting after one value")
-			} else {
-				log.Printf("Stopped extracting after %d values\n", *limit)
-			}
-
 			return jsonextract.ErrStop
 		}
 
 		return nil
-	})
+	}
+
+	// If no keys are given, we extract all objects and print them
+	if len(keys) == 0 {
+		err = jsonextract.Reader(reader, callback)
+	} else {
+		// If keys are given, we only print objects with those keys
+		err = jsonextract.Objects(reader, []jsonextract.ObjectOption{
+			{
+				Keys:     keys,
+				Callback: callback,
+			},
+		})
+	}
 	if err != nil {
 		log.Fatalln("Error while extracting:", err.Error())
 	}

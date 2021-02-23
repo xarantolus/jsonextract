@@ -20,8 +20,8 @@ import (
 func TestReader(t *testing.T) {
 	for _, tt := range testData {
 		t.Run(t.Name(), func(t *testing.T) {
-			if gotExtracted, _ := ReaderObjects(strings.NewReader(tt.arg)); !reflect.DeepEqual(gotExtracted, tt.want) {
-				t.Errorf("ReaderObjects(%q) = %v, want %v", tt.arg, convert(gotExtracted), convert(tt.want))
+			if gotExtracted, _ := readerObjects(strings.NewReader(tt.arg)); !reflect.DeepEqual(gotExtracted, tt.want) {
+				t.Errorf("readerObjects(%q) = %v, want %v", tt.arg, convert(gotExtracted), convert(tt.want))
 			}
 		})
 	}
@@ -84,6 +84,13 @@ func TestCallback(t *testing.T) {
 	})
 }
 
+func readerObjects(reader io.Reader) (objects []json.RawMessage, err error) {
+	return objects, Reader(reader, func(b []byte) error {
+		objects = append(objects, b)
+		return nil
+	})
+}
+
 type failableReader struct {
 	r io.Reader
 
@@ -103,23 +110,23 @@ func TestReaderErr(t *testing.T) {
 
 	var testReader io.Reader = iotest.ErrReader(err)
 
-	o, rerr := ReaderObjects(testReader)
+	o, rerr := readerObjects(testReader)
 	if err != rerr {
-		t.Errorf("expected ReaderObjects() to return first read error")
+		t.Errorf("expected readerObjects() to return first read error")
 	}
 	if len(o) > 0 {
-		t.Error("expected ReaderObjects() to return no result on error")
+		t.Error("expected readerObjects() to return no result on error")
 	}
 
 	r := iotest.OneByteReader(strings.NewReader(strings.Repeat("{}", 2500)))
 
-	o, rerr = ReaderObjects(r)
+	o, rerr = readerObjects(r)
 
 	if rerr != nil {
-		t.Error("Expected ReaderObjects() to return no error")
+		t.Error("Expected readerObjects() to return no error")
 	}
 	if len(o) != 2500 {
-		t.Error("ReaderObjects() didn't read the entire reader")
+		t.Error("readerObjects() didn't read the entire reader")
 	}
 
 	var cbCount int

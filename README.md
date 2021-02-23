@@ -4,46 +4,6 @@
 
 If any text looks like a JavaScript object or is close looking like JSON, it will be converted to it.
 
-### Examples
-Here is an example program that extracts all JSON objects from a file and prints them to the console:
-
-```go
-package main
-
-import (
-	"fmt"
-	"log"
-	"os"
-
-	"github.com/xarantolus/jsonextract"
-)
-
-func main() {
-	file, err := os.Open("file.html")
-	if err != nil {
-		log.Fatalln(err.Error())
-	}
-	defer file.Close()
-
-	// Print all JSON objects and arrays found in file.html
-	err = jsonextract.Reader(file, func(b []byte) error {
-		// Here you can parse the JSON data using a normal parser, e.g. from "encoding/json"
-		// If you want to continue with the next object, return nil
-		// To stop after this object, you can return jsonextract.ErrStop
-
-		// len(b) > 0 will always be true
-
-		// But here, we just print the data
-		fmt.Println(string(b))
-
-		return nil
-	})
-	if err != nil {
-		log.Fatalln(err.Error())
-	}
-}
-```
-
 ### Extractor program
 There's a small extractor program that uses this library to get data from URLs and files.
 
@@ -51,22 +11,28 @@ If you want to give it a try, you can just go-get it:
 
     go get -u github.com/xarantolus/jsonextract/cmd/jsonx
 
-You can use it on files or URLs, e.g. like this:
+You can use it both on files and URLs like this:
 
     jsonx reader_test.go
 
-or on URLs like this:
+or like this:
 
     jsonx "https://stackoverflow.com/users/5728357/xarantolus?tab=topactivity"
 
-### Other examples
-There are also examples in the [`examples`](examples/) subdirectory.
+It is also possible to only extract objects with certain keys by passing them along:
+
+	jsonx "https://www.youtube.com/playlist?list=PLBQ5P5txVQr9_jeZLGa0n5EIYvsOJFAnY" videoId title
+
+### Examples
+There are examples in the [`examples`](examples/) subdirectory.
 
 The [string example](examples/string/main.go) shows how to use the package to quickly get all JSON objects/arrays in a string, it uses a [`strings.Reader`](https://pkg.go.dev/strings#NewReader) for that.
 
 The [`stackoverflow-chart` example](examples/stackoverflow-chart/main.go) shows how to extract the reputation chart data of a StackOverflow user. Extracted data is then used to draw the same chart using Go:
 
 ![Comparing chart from StackOverflow and the scraped and drawn result](.github/img/comparison-stackoverflow.png)
+
+For the `Objects` method you can also find some examples in [the documentation](https://pkg.go.dev/github.com/xarantolus/jsonextract).
 
 ### Supported notations
 This software supports not just extracting normal JSON, but also other JavaScript notation.
@@ -89,7 +55,7 @@ This means that text like the following, which is definitely not valid JSON, can
 	},
 
 	// JSON doesn't support all these number formats
-	"dec": 21,
+	"dec": +21,
 	"hex": 0x15,
 	"oct": 0o25,
 	"bin": 0b10101,
@@ -112,10 +78,11 @@ results in
 
 ### Notes
 * While the functions take an `io.Reader` and stream data from it without buffering everything in memory, the underlying JS lexer uses `ioutil.ReadAll`. That means that this doesn't work well on files that are larger than memory.
-* When extracting objects from JavaScript files, you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indices being used in the script. You have to filter these out yourself.
-* While this package supports most number formats, there are some that don't work because the lexer doesn't support them. One of them are underscores in numbers, e.g. in JS `2175` can be written as `2_175` or `0x8_7_f`, but that doesn't work here. Another example are numbers with a leading zero; they are rejected by the lexer because it's not clear if they should be interpreted as octal or decimal.
+* When extracting objects from JavaScript files using `Reader`, you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indices being used in the script. You have to filter these out yourself.
+* While this package supports most number formats, there are some that don't work because the lexer doesn't support them. One of them are underscores in numbers. An example is that in JavaScript `2175` can be written as `2_175` or `0x8_7_f`, but that doesn't work here. Another example are numbers with a leading zero; they are rejected by the lexer because it's not clear if they should be interpreted as octal or decimal.
 
 ### Changelog
+* **v1.4.0**: Add `Objects` method for easily decoding smaller subsets of large nested structures
 * **v1.3.1**: Support more number formats by transforming them to decimal numbers, which are valid in JSON
 * **v1.3.0**: Return to non-streaming version that worked with all objects, the streaming version seemed to skip certain parts and thus wasn't very great
 * **v1.2.0**: Fork the [JS lexer](https://github.com/tdewolff/parse) and make it use the underlying streaming lexer that was already in that package. That's a bit faster and prevents many unnecessary resets. This also makes it possible to extract from *very* large files with a small memory footprint.
@@ -135,6 +102,9 @@ results in
 
 ### Thanks
 Thanks to everyone who made [the `parse` package](https://github.com/tdewolff/parse) possible. Without it, creating this extractor would have been a lot harder.
+
+### Contributing
+Please feel free to open issues for anything that doesn't seem right, even small stuff. 
 
 ### [License](LICENSE)
 This is free as in freedom software. Do whatever you like with it.
