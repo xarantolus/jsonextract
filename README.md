@@ -78,11 +78,11 @@ results in
 
 ### Notes
 * While the functions take an `io.Reader` and stream data from it without buffering everything in memory, the underlying JS lexer uses `ioutil.ReadAll`. That means that this doesn't work well on files that are larger than memory.
-* When extracting objects from JavaScript files using `Reader`, you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indices being used in the script. You have to filter these out yourself.
+* When extracting objects from JavaScript files using [`Reader`](https://pkg.go.dev/github.com/xarantolus/jsonextract#Reader), you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indices being used in the script. You have to filter these out yourself.
 * While this package supports most number formats, there are some that don't work because the lexer doesn't support them. One of them are underscores in numbers. An example is that in JavaScript `2175` can be written as `2_175` or `0x8_7_f`, but that doesn't work here. Another example are numbers with a leading zero; they are rejected by the lexer because it's not clear if they should be interpreted as octal or decimal.
 
 ### Changelog
-* **v1.4.0**: Add `Objects` method for easily decoding smaller subsets of large nested structures
+* **v1.4.0**: Add [`Objects`](https://pkg.go.dev/github.com/xarantolus/jsonextract#Objects) method for easily decoding smaller subsets of large nested structures
 * **v1.3.1**: Support more number formats by transforming them to decimal numbers, which are valid in JSON
 * **v1.3.0**: Return to non-streaming version that worked with all objects, the streaming version seemed to skip certain parts and thus wasn't very great
 * **v1.2.0**: Fork the [JS lexer](https://github.com/tdewolff/parse) and make it use the underlying streaming lexer that was already in that package. That's a bit faster and prevents many unnecessary resets. This also makes it possible to extract from *very* large files with a small memory footprint.
