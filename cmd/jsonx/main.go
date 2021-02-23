@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -62,7 +63,10 @@ func main() {
 	var callback = func(b []byte) error {
 		callbackCount++
 
-		fmt.Println(string(b))
+		_, err := io.Copy(os.Stdout, bytes.NewReader(append(b, '\n')))
+		if err != nil {
+			panic(err)
+		}
 
 		if callbackCount == *limit {
 			return jsonextract.ErrStop
