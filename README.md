@@ -65,6 +65,9 @@ This means that text like the following, which is definitely not valid JSON, can
 	"bin": 0b10101,
 	bigint: 21n,
 
+	// NaN will be converted to null. Infinity values are however not supported
+	"num2": NaN,
+
 	// Undefined will be interpreted as null
 	"udef": undefined,
 
@@ -76,7 +79,7 @@ no problem`
 results in
 
 ```json
-{"key":"value","num":295.2,"obj":{"quoted":325,"other quotes":true,"unquoted":"test"},"dec":21,"hex":21,"oct":21,"bin":21,"bigint":21,"udef":null,"lastvalue":"multiline strings are\nno problem"}
+{"key":"value","num":295.2,"obj":{"quoted":325,"other quotes":true,"unquoted":"test"},"dec":21,"hex":21,"oct":21,"bin":21,"bigint":21,"num2":null,"udef":null,"lastvalue":"multiline strings are\nno problem"}
 ```
 
 
@@ -84,8 +87,10 @@ results in
 * While the functions take an `io.Reader` and stream data from it without buffering everything in memory, the underlying JS lexer uses `ioutil.ReadAll`. That means that this doesn't work well on files that are larger than memory.
 * When extracting objects from JavaScript files using [`Reader`](https://pkg.go.dev/github.com/xarantolus/jsonextract#Reader), you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indices being used in the script. You have to filter these out yourself.
 * While this package supports most number formats, there are some that don't work because the lexer doesn't support them. One of those is underscores in numbers. An example is that in JavaScript `2175` can be written as `2_175` or `0x8_7_f`, but that doesn't work here (HEX number do however). Another example are numbers with a leading zero; they are rejected by the lexer because it's not clear if they should be interpreted as octal or decimal.
+* Another example of unsupported number types are the float values `Inf`, `+Inf`, `-Inf` and other infinity values. While `NaN` is converted to `null` (as `NaN` is not valid JSON), infinity values don't have an appropriate JSON representation
 
 ### Changelog
+* **v1.4.1**: Transform `NaN` inputs to `null`
 * **v1.4.0**: Add [`Objects`](https://pkg.go.dev/github.com/xarantolus/jsonextract#Objects) method for easily decoding smaller subsets of large nested structures
 * **v1.3.1**: Support more number formats by transforming them to decimal numbers, which are valid in JSON
 * **v1.3.0**: Return to non-streaming version that worked with all objects, the streaming version seemed to skip certain parts and thus wasn't very great

@@ -245,8 +245,11 @@ var jsIdentifiers = map[string][]byte{
 	"true":  []byte("true"),
 	"false": []byte("false"),
 	"null":  []byte("null"),
-	// Special case: treat undefined as null
+	// Special cases
+	// treat undefined as null
 	"undefined": []byte("null"),
+	// treat NaN as null
+	"NaN": []byte("null"),
 }
 
 // singleQuoteReplacer replaces a single quoted string to be double-quoted
@@ -472,7 +475,7 @@ func transformNumber(number []byte) []byte {
 	// number literals (e.g. 1_00 == 100) etc.
 	ui, err := strconv.ParseUint(string(number), 0, 64)
 	if err != nil {
-		// This happens when the number is too big. We can still try if it's valid JSON, but if it contains anything special then it won't work
+		// this can happen if the number is a float. We just leave it as that, it should be accepted by JSON parsers
 		return append(out, number...)
 	}
 

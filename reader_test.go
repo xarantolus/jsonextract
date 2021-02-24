@@ -156,6 +156,21 @@ func TestExpectations(t *testing.T) {
 			t.Fail()
 		}
 	})
+
+	t.Run("JSON parser interpets \"null\" as zero for number types", func(t *testing.T) {
+		var f float64
+
+		err := json.Unmarshal([]byte("null"), &f)
+		if err != nil {
+			panic(err)
+		}
+
+		var i int
+		err = json.Unmarshal([]byte("null"), &i)
+		if err != nil {
+			panic(err)
+		}
+	})
 }
 
 func TestHTMLFile(t *testing.T) {
@@ -270,6 +285,30 @@ var testData = []struct {
 		`{[[undefined, null, ]]}`,
 		[]json.RawMessage{
 			[]byte(`[[null,null]]`),
+		},
+	},
+	{
+		"[NaN]",
+		[]json.RawMessage{
+			[]byte(`[null]`),
+		},
+	},
+	{
+		"[0B101, 0O73, 0x75]",
+		[]json.RawMessage{
+			[]byte("[5,59,117]"),
+		},
+	},
+	{
+		"[0B101, -0O73, 0x75]",
+		[]json.RawMessage{
+			[]byte("[5,-59,117]"),
+		},
+	},
+	{
+		`[			5.56789e+0          ,]`,
+		[]json.RawMessage{
+			[]byte(`[5.56789e+0]`),
 		},
 	},
 	{
@@ -908,8 +947,16 @@ func Test_transformNumber(t *testing.T) {
 			strconv.FormatUint(math.MaxUint64, 10),
 		},
 		{
+			"0B101",
+			"5",
+		},
+		{
 			"0b" + strconv.FormatUint(math.MaxUint64, 2),
 			strconv.FormatUint(math.MaxUint64, 10),
+		},
+		{
+			"5.56789e+0",
+			"5.56789e+0",
 		},
 		{
 			"0x" + strconv.FormatUint(math.MaxUint64, 16),
@@ -919,20 +966,41 @@ func Test_transformNumber(t *testing.T) {
 			"0o" + strconv.FormatUint(math.MaxUint64, 8),
 			strconv.FormatUint(math.MaxUint64, 10),
 		},
+		{
+			"6.667e-11",
+			"6.667e-11",
+		},
+		{
+			"17.5",
+			"17.5",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(t.Name(), func(t *testing.T) {
-			if got := transformNumber([]byte(tt.arg)); !bytes.Equal(got, []byte(tt.want)) {
+			got := transformNumber([]byte(tt.arg))
+			if !bytes.Equal(got, []byte(tt.want)) {
 				t.Errorf("transformDecimalNumber() = %v, want %v", string(got), string(tt.want))
+			}
+			if !json.Valid(got) {
+				t.Errorf("%v (generated from %v) is not valid JSON", got, tt.arg)
 			}
 
 			// Also test negative numbers
-			if got := transformNumber([]byte("-" + tt.arg)); !bytes.Equal(got, []byte("-"+tt.want)) {
+			got = transformNumber([]byte("-" + tt.arg))
+			if !bytes.Equal(got, []byte("-"+tt.want)) {
 				t.Errorf("transformDecimalNumber() = %v, want %v", string(got), string("-"+tt.want))
 			}
+			if !json.Valid(got) {
+				t.Errorf("%v (generated from -%v) is not valid JSON", got, tt.arg)
+			}
+
 			// A leading '+' should be removed
-			if got := transformNumber([]byte("+" + tt.arg)); !bytes.Equal(got, []byte(tt.want)) {
+			got = transformNumber([]byte("+" + tt.arg))
+			if !bytes.Equal(got, []byte(tt.want)) {
 				t.Errorf("transformDecimalNumber() = %v, want %v", string(got), string(tt.want))
+			}
+			if !json.Valid(got) {
+				t.Errorf("%v (generated from +%v) is not valid JSON", got, tt.arg)
 			}
 		})
 	}
