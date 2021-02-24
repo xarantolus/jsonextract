@@ -21,18 +21,22 @@ or like this:
 
 It is also possible to only extract objects with certain keys by passing them along:
 
+	jsonx "https://www.youtube.com/watch?v=ap-BkkrRg-o" videoId title channelId
+
+Another example:
+
 	jsonx "https://www.youtube.com/playlist?list=PLBQ5P5txVQr9_jeZLGa0n5EIYvsOJFAnY" videoId title
 
 ### Examples
 There are examples in the [`examples`](examples/) subdirectory.
 
-The [string example](examples/string/main.go) shows how to use the package to quickly get all JSON objects/arrays in a string, it uses a [`strings.Reader`](https://pkg.go.dev/strings#NewReader) for that.
+The [string example](examples/string/main.go) shows how to use the package to get all JSON objects/arrays in a string, it uses a [`strings.Reader`](https://pkg.go.dev/strings#NewReader) for that.
 
 The [`stackoverflow-chart` example](examples/stackoverflow-chart/main.go) shows how to extract the reputation chart data of a StackOverflow user. Extracted data is then used to draw the same chart using Go:
 
-![Comparing chart from StackOverflow and the scraped and drawn result](.github/img/comparison-stackoverflow.png)
+![Comparing chart from StackOverflow and the scraped and drawn result](.github/img/comparison-stackoverflow.png?raw=true)
 
-For the `Objects` method you can also find some examples in [the documentation](https://pkg.go.dev/github.com/xarantolus/jsonextract).
+For the [`Objects`](https://pkg.go.dev/github.com/xarantolus/jsonextract#Objects) method you can also find examples in the documentation.
 
 ### Supported notations
 This software supports not just extracting normal JSON, but also other JavaScript notation.
@@ -79,7 +83,7 @@ results in
 ### Notes
 * While the functions take an `io.Reader` and stream data from it without buffering everything in memory, the underlying JS lexer uses `ioutil.ReadAll`. That means that this doesn't work well on files that are larger than memory.
 * When extracting objects from JavaScript files using [`Reader`](https://pkg.go.dev/github.com/xarantolus/jsonextract#Reader), you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indices being used in the script. You have to filter these out yourself.
-* While this package supports most number formats, there are some that don't work because the lexer doesn't support them. One of them are underscores in numbers. An example is that in JavaScript `2175` can be written as `2_175` or `0x8_7_f`, but that doesn't work here. Another example are numbers with a leading zero; they are rejected by the lexer because it's not clear if they should be interpreted as octal or decimal.
+* While this package supports most number formats, there are some that don't work because the lexer doesn't support them. One of those is underscores in numbers. An example is that in JavaScript `2175` can be written as `2_175` or `0x8_7_f`, but that doesn't work here (HEX number do however). Another example are numbers with a leading zero; they are rejected by the lexer because it's not clear if they should be interpreted as octal or decimal.
 
 ### Changelog
 * **v1.4.0**: Add [`Objects`](https://pkg.go.dev/github.com/xarantolus/jsonextract#Objects) method for easily decoding smaller subsets of large nested structures
