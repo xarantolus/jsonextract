@@ -11,6 +11,9 @@ import (
 
 // Unmarshal returns a callback function that can be used with the Objects method for decoding one
 // element. After verify returns true, the object will no longer be changed.
+//
+// Please note that any Unmarshal errors will be ignored, which means that if you don't pass a pointer
+// or your struct field types don't match the ones in the data, you will not be notified about the error.
 func Unmarshal(pointer interface{}, verify func() bool) JSONCallback {
 	var done bool
 
