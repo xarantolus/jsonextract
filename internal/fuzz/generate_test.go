@@ -10,6 +10,11 @@ import (
 )
 
 func TestGenerateFiles(t *testing.T) {
+	// Running in GitHub actions? Skip this
+	if os.Getenv("CI") == "true" {
+		t.Skip()
+	}
+
 	t.Helper()
 
 	err := os.MkdirAll("corpus", 0644)
