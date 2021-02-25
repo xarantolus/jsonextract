@@ -13,3 +13,8 @@
 
 
 examples/stackoverflow-chart/*.png
+
+internal/fuzz/*.zip
+internal/fuzz/corpus
+internal/fuzz/crashers
+internal/fuzz/suppressions
