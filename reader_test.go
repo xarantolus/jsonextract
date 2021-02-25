@@ -222,6 +222,11 @@ var testData = []struct {
 	want []json.RawMessage
 }{
 	{
+		// This was found using https://github.com/dvyukov/go-fuzz
+		"[`",
+		nil,
+	},
+	{
 		"",
 		nil,
 	},

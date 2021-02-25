@@ -411,6 +411,11 @@ loop:
 			err = fmt.Errorf("unsupported string type (text: %s)", string(text))
 			break loop
 		case tt == js.TemplateToken:
+			if len(text) <= 2 {
+				err = fmt.Errorf("Expected string to have at least quotes, but that didn't happen")
+				break loop
+			}
+
 			var toEscape = templateQuoteReplacer.Replace(string(text[1 : len(text)-1]))
 
 			text, merr = json.Marshal(string(toEscape))
