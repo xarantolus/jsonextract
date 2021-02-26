@@ -96,6 +96,7 @@ func Objects(r io.Reader, o []ObjectOption) (err error) {
 				if opt.match(m) {
 					// If an object matched, we no longer care about its child elements
 					return opt.Callback(b)
+					// TODO: Go deeper if a certain error was returned by Callback
 				}
 			}
 

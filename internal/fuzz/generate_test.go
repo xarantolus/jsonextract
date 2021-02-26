@@ -503,4 +503,32 @@ var fuzzData = []struct {
 			[]byte(`{"test":3}`),
 		},
 	},
+	{
+		`{"value":25,"another":"test","quoted":{"is this even valid in JS?":75},"nextkey":"this\ntemplate literal\n\nspans\n\nmany \n\n\nlines"}`,
+		nil,
+	},
+	{
+		`{"subkey":"value"}`,
+		nil,
+	},
+	{
+		`{"subkey":"value"}`,
+		nil,
+	},
+	{
+		`{"@context":"https://schema.org","@type":"Product","aggregateRating":{"@type":"AggregateRating","ratingValue":"3.5","reviewCount":"11"},"description":"jsonextract is a Go library","name":"jsonextract","image":"microwave.jpg","offers":{"@type":"Offer","availability":"https://schema.org/InStock","price":"00.00","priceCurrency":"USD"},"review":[{"@type":"Review","author":"Ellie","datePublished":"2012-09-06","reviewBody":"I'm still not sure if this works.","name":"Test","reviewRating":{"@type":"Rating","bestRating":"5","ratingValue":"1","worstRating":"1"}},{"@type":"Review","author":"Lucas","datePublished":"2014-02-21","reviewBody":"Great microwave for the price.","name":"Value purchase","reviewRating":{"@type":"Rating","bestRating":"5","ratingValue":"4","worstRating":"1"}}]}`,
+		nil,
+	},
+	{
+		`{}`,
+		nil,
+	},
+	{
+		`[]`,
+		nil,
+	},
+	{
+		"[\" this is a template string. \",\"in JS you can escape` the quote character `\"]",
+		nil,
+	},
 }
