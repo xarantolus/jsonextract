@@ -288,8 +288,10 @@ func readJSObject(r io.Reader) (output []byte, readInputBytes int, err error) {
 
 	// lastByte stores the last byte we wrote to buf
 	// It is used for detecting and correcting trailing commas
-	var lastByte byte
-
+	var (
+		lastByte  byte
+		lastToken js.TokenType
+	)
 	var merr error
 loop:
 	for {
@@ -426,6 +428,10 @@ loop:
 
 			buf.Write(text)
 		case js.IsNumeric(tt):
+			if js.IsNumeric(lastToken) {
+				err = fmt.Errorf("invalid: writing two numbers directly after each other")
+				break loop
+			}
 			// Not all JS numbers are valid JSON numbers, e.g. the following are valid in JS, but not JSON:
 			// +5, 0x3, 0o4, 0b1001, -0x3, 8n
 
@@ -450,6 +456,7 @@ loop:
 		}
 
 		lastByte = text[len(text)-1]
+		lastToken = tt
 	}
 
 	if err == nil || err == io.EOF {

@@ -231,6 +231,20 @@ var testData = []struct {
 		nil,
 	},
 	{
+		`[-30,15 17n]`,
+		nil,
+	},
+	{
+		`[0o30 0o0000000004 0o3]`,
+		nil,
+	},
+	{
+		`{[1.0,3e-3]{""`,
+		[]json.RawMessage{
+			[]byte(`[1.0,3e-3]`),
+		},
+	},
+	{
 		// This is quite ambigious, as that could either be a small array or the index.
 		"first[0]",
 		[]json.RawMessage{
