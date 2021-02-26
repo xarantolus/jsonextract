@@ -90,7 +90,7 @@ results in
 * Another example of unsupported number types are the float values `Inf`, `+Inf`, `-Inf` and other infinity values. While `NaN` is converted to `null` (as `NaN` is not valid JSON), infinity values don't have an appropriate JSON representation
 
 ### Changelog
-* **v1.4.2**: Fix crash found with [go-fuzz](https://github.com/dvyukov/go-fuzz)
+* **v1.4.2**: Fix crash found using [go-fuzz](https://github.com/dvyukov/go-fuzz)
 * **v1.4.1**: Transform `NaN` inputs to `null`
 * **v1.4.0**: Add [`Objects`](https://pkg.go.dev/github.com/xarantolus/jsonextract#Objects) method for easily decoding smaller subsets of large nested structures
 * **v1.3.1**: Support more number formats by transforming them to decimal numbers, which are valid in JSON
