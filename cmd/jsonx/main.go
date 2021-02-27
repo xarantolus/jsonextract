@@ -6,15 +6,28 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/xarantolus/jsonextract"
 )
 
 var (
 	limit = flag.Int("limit", -1, "Stop extracting after this many objects")
+
+	possibleUserAgents = []string{
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:86.0) Gecko/20100101 Firefox/86.0",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246",
+		"Mozilla/5.0 (X11; CrOS x86_64 8172.45.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.64 Safari/537.36",
+		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_2) AppleWebKit/601.3.9 (KHTML, like Gecko) Version/9.0.2 Safari/601.3.9",
+	}
+
+	client = http.Client{
+		Timeout: time.Minute,
+	}
 )
 
 func main() {
@@ -46,7 +59,19 @@ func main() {
 		u, err := url.ParseRequestURI(sourceArg)
 		if err == nil && (u.Scheme == "http" || u.Scheme == "https") {
 			// If yes, we download it
-			resp, err := http.Get(u.String())
+			req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+			if err != nil {
+				log.Fatalln("Creating request:", err.Error())
+			}
+
+			rand.Seed(time.Now().UnixNano())
+
+			// Set a few headers to look like a browser
+			req.Header.Set("User-Agent", possibleUserAgents[rand.Intn(len(possibleUserAgents))])
+			req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+			req.Header.Set("Accept-Language", "en-US;q=0.7,en;q=0.3")
+
+			resp, err := client.Do(req)
 			if err != nil {
 				log.Fatalln("Downloading:", err.Error())
 			}
