@@ -43,15 +43,16 @@ This software supports not just extracting normal JSON, but also other JavaScrip
 
 This means that text like the following, which is definitely not valid JSON, can also be extracted to an object:
 
-```js
-{
+```html
+<script>
+var x = {
 	// Keys without quotes are valid in JavaScript, but not in JSON
 	key: "value",
 	num: 295.2,
 
 	// Comments are removed while processing
 
-	// Mixing normal and quoted keys is possible 
+	// Mixing normal and quoted keys is possible
 	"obj": {
 		"quoted": 325,
 		'other quotes': true,
@@ -65,21 +66,19 @@ This means that text like the following, which is definitely not valid JSON, can
 	"bin": 0b10101,
 	bigint: 21n,
 
-	// NaN will be converted to null. Infinity values are however not supported
-	"num2": NaN,
-
 	// Undefined will be interpreted as null
 	"udef": undefined,
 
 	`lastvalue`: `multiline strings are
 no problem`
 }
+</script>
 ```
 
 results in
 
 ```json
-{"key":"value","num":295.2,"obj":{"quoted":325,"other quotes":true,"unquoted":"test"},"dec":21,"hex":21,"oct":21,"bin":21,"bigint":21,"num2":null,"udef":null,"lastvalue":"multiline strings are\nno problem"}
+{"key":"value","num":295.2,"obj":{"quoted":325,"other quotes":true,"unquoted":"test"},"dec":21,"hex":21,"oct":21,"bin":21,"bigint":21,"udef":null,"lastvalue":"multiline strings are\nno problem"}
 ```
 
 
