@@ -23,6 +23,9 @@
 //     	"bin": 0b10101,
 //     	bigint: 21n,
 //
+//     	// NaN will be converted to null. Infinity values are however not supported
+//     	"num2": NaN,
+//
 //     	// Undefined will be interpreted as null
 //     	"udef": undefined,
 //
