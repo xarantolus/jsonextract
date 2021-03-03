@@ -487,6 +487,12 @@ func transformNumber(number []byte) []byte {
 	// number literals (e.g. 1_00 == 100) etc.
 	ui, err := strconv.ParseUint(string(number), 0, 64)
 	if err != nil {
+		// If we have exactly one dot, and it is at the end
+		// e.g. the number "15."" should be interpreted as "15.0"
+		if number[len(number)-1] == '.' && bytes.IndexByte(number, '.') == len(number)-1 {
+			return append(out, append(number, '0')...)
+		}
+
 		// this can happen if the number is a float. We just leave it as that, it should be accepted by JSON parsers
 		return append(out, number...)
 	}

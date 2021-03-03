@@ -227,6 +227,18 @@ var testData = []struct {
 		nil,
 	},
 	{
+		`[1.]`,
+		[]json.RawMessage{
+			[]byte(`[1.0]`),
+		},
+	},
+	{
+		"{key: 7., arr:[5.0, 5.,]}",
+		[]json.RawMessage{
+			[]byte(`{"key":7.0,"arr":[5.0,5.0]}`),
+		},
+	},
+	{
 		"",
 		nil,
 	},
@@ -992,6 +1004,14 @@ func Test_transformNumber(t *testing.T) {
 		{
 			"17.5",
 			"17.5",
+		},
+		{
+			"1.",
+			"1.0",
+		},
+		{
+			"1725.",
+			"1725.0",
 		},
 	}
 	for _, tt := range tests {
