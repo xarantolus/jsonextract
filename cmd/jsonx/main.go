@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime/debug"
 	"time"
 
 	"github.com/xarantolus/jsonextract"
@@ -36,6 +37,11 @@ func main() {
 		flag.PrintDefaults()
 		fmt.Fprintln(flag.CommandLine.Output(), "\nNotes:\nIf you specify keys, only objects with all of them will be printed.")
 		fmt.Fprintln(flag.CommandLine.Output(), "You can also pipe input into this program when specifying '-' as input file.")
+
+		info, ok := debug.ReadBuildInfo()
+		if ok {
+			fmt.Fprintln(flag.CommandLine.Output(), "Compiled with version "+info.Main.Version)
+		}
 	}
 	flag.Parse()
 
