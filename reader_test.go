@@ -710,32 +710,6 @@ var testData = []struct {
 	},
 }
 
-type infiniteReader struct {
-	initial *strings.Reader
-
-	rest []byte
-
-	reads int
-}
-
-func (i *infiniteReader) Read(p []byte) (n int, err error) {
-	n, err = i.initial.Read(p)
-
-	for {
-		i.reads++
-		if n >= len(p) {
-			return len(p), nil
-		}
-
-		// Almost infinite?
-		if i.reads > 10_000 {
-			panic("infiniteReader has read too many times")
-		}
-
-		n += copy(p[n:], i.rest)
-	}
-}
-
 var readerTestData = []struct {
 	input string
 	want  string
