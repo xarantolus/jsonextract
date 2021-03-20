@@ -71,7 +71,7 @@ var ErrCallbackNeverCalled = errors.New("callback never called")
 func Objects(r io.Reader, o []ObjectOption) (err error) {
 
 	var (
-		calledCallbacks = make(map[*JSONCallback]bool)
+		calledCallbacks = make(map[int]bool)
 
 		keyFunc func(b []byte) error
 	)
@@ -102,9 +102,9 @@ func Objects(r io.Reader, o []ObjectOption) (err error) {
 			}
 
 			// Match the first option that is good for this struct
-			for _, opt := range o {
+			for i, opt := range o {
 				if opt.match(m) {
-					calledCallbacks[&opt.Callback] = true
+					calledCallbacks[i] = true
 					// If an object matched, we no longer care about its child elements
 					return opt.Callback(b)
 					// TODO: Go deeper if a certain error was returned by Callback
@@ -135,10 +135,10 @@ func Objects(r io.Reader, o []ObjectOption) (err error) {
 
 	// Only check required callbacks if there are no other errors
 	if err == nil {
-		for _, oo := range o {
+		for i, oo := range o {
 			if oo.Required {
 				// If the callback of a required option was never called, we return an error
-				if _, ok := calledCallbacks[&oo.Callback]; !ok {
+				if _, ok := calledCallbacks[i]; !ok {
 					err = ErrCallbackNeverCalled
 					break
 				}
