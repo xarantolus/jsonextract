@@ -81,6 +81,8 @@ func ExampleObjects_nestedObjects() {
 				// Return true if all fields we want have valid values
 				return license.Key != "" && license.Name != ""
 			}),
+			// If this value is not present in the JSON data, the Objects call will return an error
+			Required: true,
 		},
 		{
 			// The owner object mostly has different keys, the overlap with "node_id"
@@ -89,16 +91,11 @@ func ExampleObjects_nestedObjects() {
 			Callback: Unmarshal(&owner, func() bool {
 				return owner.Login != "" && owner.HTMLURL != ""
 			}),
+			Required: true,
 		},
 	})
 	if err != nil {
 		panic(err)
-	}
-
-	// Now we should also check if our objects were found.
-	// It could happen that a callback is never called when the matched object isn't there
-	if license.Name == "" || owner.Login == "" {
-		panic("Not all required data could be extracted")
 	}
 
 	fmt.Printf("%s has published their package under the %s\n", owner.Login, license.Name)

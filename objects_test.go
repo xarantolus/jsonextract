@@ -1,8 +1,10 @@
 package jsonextract
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -100,6 +102,90 @@ func TestObjects(t *testing.T) {
 				t.Errorf("Called callbacks %d times, but wanted %d", calls, len(tt.expected))
 			}
 		})
+	}
+}
+
+func TestRequiredCallbackOptions(t *testing.T) {
+	var data = []byte(`{a:"b", c: 4, e: [{f:3}, {g:3}], h:{i:{j:{k:"l", "m": 3n}, o: 5.6}}, p:['q', "r"], }`)
+
+	// Test with required and produce no result, e.g. an error is expected
+
+	var called bool
+	err := Objects(bytes.NewReader(data), []ObjectOption{
+		{
+			Keys:     []string{"this-key-doesn't-exist"},
+			Required: true,
+			Callback: func(b []byte) error {
+				called = true
+				return nil
+			},
+		},
+	})
+	if err != ErrCallbackNeverCalled {
+		t.Errorf("Expected ErrCallbackNeverCalled, but got %q", err.Error())
+	}
+	if called {
+		t.Errorf("Callback called even though ErrCallbackNeverCalled was returned")
+	}
+
+	called = false
+
+	type km struct {
+		K string `json:"k"`
+		M int    `json:"m"`
+	}
+
+	// Test without required, but produce a result
+
+	var kmval km
+
+	err = Objects(bytes.NewReader(data), []ObjectOption{
+		{
+			Keys: []string{"k"},
+			Callback: func(b []byte) error {
+				called = true
+				err := json.Unmarshal(b, &kmval)
+				if err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+	})
+	if err != nil {
+		t.Errorf("unexpected error %q on valid data", err.Error())
+	}
+	if kmval.K != "l" || kmval.M != 3 {
+		t.Errorf("Unexpected values %#v in km struct, expected k='l' and m='3'", kmval)
+	}
+
+	called = false
+
+	// Test without required and produce no result
+
+	var anotherkmval km
+
+	err = Objects(bytes.NewReader(data), []ObjectOption{
+		{
+			Keys: []string{"y"},
+			Callback: func(b []byte) error {
+				called = true
+				err := json.Unmarshal(b, &anotherkmval)
+				if err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+	})
+	if err != nil {
+		t.Errorf("unexpected error %q on valid data", err.Error())
+	}
+	if !reflect.DeepEqual(anotherkmval, km{}) {
+		t.Errorf("Unexpected values %#v in km struct, expected it to be empty", kmval)
+	}
+	if called {
+		t.Errorf("expected callback function to not be called because there is no such key")
 	}
 }
 

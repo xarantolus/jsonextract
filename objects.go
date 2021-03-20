@@ -7,8 +7,6 @@ import (
 	"sort"
 )
 
-// TODO (Objects): early return if all callbacks are done
-
 // Unmarshal returns a callback function that can be used with the Objects method for decoding one
 // element. After verify returns true, the object will no longer be changed.
 //
@@ -43,6 +41,9 @@ type ObjectOption struct {
 	// Callback receives JSON bytes for all objects that have all keys defined by Keys.
 	// Returning ErrStop will stop extraction without error. Other errors will be returned.
 	Callback JSONCallback
+
+	// Required sets whether ErrCallbackNeverCalled should be returned if the callback function for this ObjectOption is not called
+	Required bool
 }
 
 func (s *ObjectOption) match(m map[string]rawMessageNoCopy) bool {
@@ -54,6 +55,9 @@ func (s *ObjectOption) match(m map[string]rawMessageNoCopy) bool {
 	return true
 }
 
+// ErrCallbackNeverCalled is returned from Objects if the callback of a required ObjectOption was never called
+var ErrCallbackNeverCalled = errors.New("callback never called")
+
 // Objects extracts all nested objects and passes them to appropriate callback functions.
 // You can define which keys must be present for an object to be passed to your function.
 //
@@ -61,10 +65,16 @@ func (s *ObjectOption) match(m map[string]rawMessageNoCopy) bool {
 //
 // If multiple options would match, only the first one will be processed.
 //
+// If a required option is not matched, ErrCallbackNeverCalled will be returned.
+//
 // Arrays/Slices will not cause a callback as they don't have keys, but objects in them will be matched.
 func Objects(r io.Reader, o []ObjectOption) (err error) {
 
-	var keyFunc func(b []byte) error
+	var (
+		calledCallbacks = make(map[*JSONCallback]bool)
+
+		keyFunc func(b []byte) error
+	)
 
 	keyFunc = func(b []byte) (err error) {
 		if b[0] == '[' {
@@ -94,6 +104,7 @@ func Objects(r io.Reader, o []ObjectOption) (err error) {
 			// Match the first option that is good for this struct
 			for _, opt := range o {
 				if opt.match(m) {
+					calledCallbacks[&opt.Callback] = true
 					// If an object matched, we no longer care about its child elements
 					return opt.Callback(b)
 					// TODO: Go deeper if a certain error was returned by Callback
@@ -121,6 +132,19 @@ func Objects(r io.Reader, o []ObjectOption) (err error) {
 	}
 
 	err = Reader(r, keyFunc)
+
+	// Only check required callbacks if there are no other errors
+	if err == nil {
+		for _, oo := range o {
+			if oo.Required {
+				// If the callback of a required option was never called, we return an error
+				if _, ok := calledCallbacks[&oo.Callback]; !ok {
+					err = ErrCallbackNeverCalled
+					break
+				}
+			}
+		}
+	}
 
 	return
 }
