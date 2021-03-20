@@ -93,6 +93,7 @@ results in
 * Another example of unsupported number types are the float values `Inf`, `+Inf`, `-Inf` and other infinity values. While `NaN` is converted to `null` (as `NaN` is not valid JSON), infinity values don't have an appropriate JSON representation.
 
 ### Changelog
+* **v1.4.4**: `Objects`: Add `Required` field that controls if an error should be returned if the object was not found. This makes it more convenient to use this function as no further checks are needed after extracting objects.
 * **v1.4.3**: Convert floats with trailing dots to valid JSON, e.g. a `1.` is converted to `1.0` as the first one isn't valid JSON
 * **v1.4.2**: Fix crash found using [go-fuzz](https://github.com/dvyukov/go-fuzz)
 * **v1.4.1**: Transform `NaN` inputs to `null`
