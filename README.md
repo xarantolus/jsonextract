@@ -36,7 +36,9 @@ The [`stackoverflow-chart` example](examples/stackoverflow-chart/main.go) shows 
 
 ![Comparing chart from StackOverflow and the scraped and drawn result](.github/img/comparison-stackoverflow.png?raw=true)
 
-For the [`Objects`](https://pkg.go.dev/github.com/xarantolus/jsonextract#Objects) method you can also find examples in the documentation.
+Another real-world use-case is the [`yt-live`](examples/yt-live/main.go) example which extracts video info about the current live stream of a YouTube channel. The example illustrates how simple and powerful this library can be.
+
+Other examples for the [`Objects`](https://pkg.go.dev/github.com/xarantolus/jsonextract#Objects) method can be found in the documentation.
 
 ### Supported notations
 This software supports not just extracting normal JSON, but also other JavaScript notation.
