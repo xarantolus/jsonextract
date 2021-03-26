@@ -27,7 +27,9 @@ var matchingBracket = map[byte]byte{
 }
 
 var (
-	// ErrStop can be returned from a JSONCallback function to indicate that processing should stop now
+	// ErrStop can be returned from a JSONCallback function to indicate that processing should stop.
+	// When used with Reader, it will stop processing.
+	// When used with Objects, the callback function will never be called again (e.g. after it received the required data).
 	ErrStop = errors.New("stop processing json")
 )
 
@@ -36,7 +38,7 @@ var (
 // Any JSON objects will be passed to it as bytes as defined by the function.
 //
 // If this function returns an error, processing will stop and return that error.
-// If the returned error is ErrStop, processing will stop and return the nil error.
+// You can return ErrStop to make sure the function will not be called again.
 type JSONCallback func([]byte) error
 
 // Reader reads all JSON and JavaScript objects from the input and calls callback for each of them.
@@ -361,7 +363,7 @@ loop:
 				}
 
 				if lastByte == '{' && text[0] == '{' {
-					err = fmt.Errorf("Opening brace { cannot come after another opening brace")
+					err = fmt.Errorf("opening brace { cannot come after another opening brace")
 					break loop
 				}
 
@@ -414,7 +416,7 @@ loop:
 			break loop
 		case tt == js.TemplateToken:
 			if len(text) <= 2 {
-				err = fmt.Errorf("Expected string to have at least quotes, but that didn't happen")
+				err = fmt.Errorf("expected string to have at least quotes, but that didn't happen")
 				break loop
 			}
 

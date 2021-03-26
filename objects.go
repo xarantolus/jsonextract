@@ -13,20 +13,17 @@ import (
 // Please note that any Unmarshal errors will be ignored, which means that if you don't pass a pointer
 // or your struct field types don't match the ones in the data, you will not be notified about the error.
 func Unmarshal(pointer interface{}, verify func() bool) JSONCallback {
-	var done bool
-
 	return func(b []byte) error {
-		if done {
-			return nil
-		}
 
 		err := json.Unmarshal(b, pointer)
 		if err != nil {
 			return nil
 		}
 
-		// Never change the object again after this
-		done = verify()
+		// If true, we never change the object again
+		if verify() {
+			return ErrStop
+		}
 
 		return nil
 	}
@@ -55,7 +52,7 @@ func (s *ObjectOption) match(m map[string]rawMessageNoCopy) bool {
 	return true
 }
 
-// ErrCallbackNeverCalled is returned from Objects if the callback of a required ObjectOption was never called
+// ErrCallbackNeverCalled is returned from Objects if the callback of a required ObjectOption was never satisfied
 var ErrCallbackNeverCalled = errors.New("callback never called")
 
 // Objects extracts all nested objects and passes them to appropriate callback functions.
@@ -71,7 +68,8 @@ var ErrCallbackNeverCalled = errors.New("callback never called")
 func Objects(r io.Reader, o []ObjectOption) (err error) {
 
 	var (
-		calledCallbacks = make(map[int]bool)
+		satisfiedCallbacks = make(map[int]bool)
+		satisfiedCount     int
 
 		keyFunc func(b []byte) error
 	)
@@ -103,11 +101,27 @@ func Objects(r io.Reader, o []ObjectOption) (err error) {
 
 			// Match the first option that is good for this struct
 			for i, opt := range o {
+				if satisfiedCallbacks[i] {
+					continue
+				}
+
 				if opt.match(m) {
-					calledCallbacks[i] = true
 					// If an object matched, we no longer care about its child elements
-					return opt.Callback(b)
-					// TODO: Go deeper if a certain error was returned by Callback
+					oerr := opt.Callback(b)
+					if oerr == ErrStop {
+						// Mark this callback function as done
+						satisfiedCallbacks[i] = true
+						satisfiedCount++
+
+						// When all options are satisfied, there's no point in continuing
+						if satisfiedCount == len(o) {
+							return ErrStop
+						}
+
+						// Make sure don't terminate too early
+						oerr = nil
+					}
+					return oerr
 				}
 			}
 
@@ -134,11 +148,11 @@ func Objects(r io.Reader, o []ObjectOption) (err error) {
 	err = Reader(r, keyFunc)
 
 	// Only check required callbacks if there are no other errors
-	if err == nil {
+	if err == nil && satisfiedCount != len(o) {
 		for i, oo := range o {
 			if oo.Required {
-				// If the callback of a required option was never called, we return an error
-				if _, ok := calledCallbacks[i]; !ok {
+				// If the callback of a required option was never satisfied, we return an error
+				if _, ok := satisfiedCallbacks[i]; !ok {
 					err = ErrCallbackNeverCalled
 					break
 				}

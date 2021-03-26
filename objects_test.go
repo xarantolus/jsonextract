@@ -3,11 +3,106 @@ package jsonextract
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
 )
+
+func TestRequired(t *testing.T) {
+	const data = `{"a": 3}{"a": "b"}`
+	type d struct {
+		A string `json:"a"`
+	}
+
+	var val d
+
+	err := Objects(strings.NewReader(data), []ObjectOption{
+		{
+			Keys: []string{"a"},
+			Callback: Unmarshal(&val, func() bool {
+				return false
+			}),
+			Required: true,
+		},
+	})
+	if !errors.Is(err, ErrCallbackNeverCalled) {
+		t.Errorf("Expected ErrCallbackNeverCalled, but got %q", err)
+	}
+}
+
+func TestObjectsSatisfied(t *testing.T) {
+	var data = `{}{}{}{}{"a":"b"}{b:3}{}{}`
+
+	type a struct {
+		A string
+	}
+	type b struct {
+		B int
+	}
+
+	// In this test, we get the required data
+
+	var (
+		aval a
+		bval b
+	)
+
+	err := Objects(strings.NewReader(data), []ObjectOption{
+		{
+			Keys: []string{"a"},
+			Callback: Unmarshal(&aval, func() bool {
+				return aval.A != ""
+			}),
+			Required: true,
+		},
+		{
+			Keys: []string{"b"},
+			Callback: Unmarshal(&bval, func() bool {
+				return bval.B > 0
+			}),
+			Required: true,
+		},
+	})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if aval.A != "b" {
+		t.Errorf("aval.A has unexpected value %q, wanted %q", aval.A, "b")
+	}
+	if bval.B != 3 {
+		t.Errorf("bval.B has unexpected value %v, wanted %v", bval.B, 3)
+	}
+
+	// Now we simulate that we didn't get the values we want
+	data = `{}`
+
+	var (
+		aval2 a
+		bval2 b
+	)
+
+	err = Objects(strings.NewReader(data), []ObjectOption{
+		{
+			Keys: []string{"a"},
+			Callback: Unmarshal(&aval2, func() bool {
+				return aval2.A != ""
+			}),
+			Required: true,
+		},
+		{
+			Keys: []string{"b"},
+			Callback: Unmarshal(&bval2, func() bool {
+				return bval2.B > 0
+			}),
+			Required: true,
+		},
+	})
+	if !errors.Is(err, ErrCallbackNeverCalled) {
+		t.Errorf("unexpected error, wanted ErrCallbackNeverCalled: %v", err)
+	}
+}
 
 func TestObjects(t *testing.T) {
 	tests := []struct {
