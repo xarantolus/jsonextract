@@ -26,12 +26,10 @@ var matchingBracket = map[byte]byte{
 	'[': ']',
 }
 
-var (
-	// ErrStop can be returned from a JSONCallback function to indicate that processing should stop.
-	// When used with Reader, it will stop processing.
-	// When used with Objects, the callback function will never be called again (e.g. after it received the required data).
-	ErrStop = errors.New("stop processing json")
-)
+// ErrStop can be returned from a JSONCallback function to indicate that processing should stop.
+// When used with Reader, it will stop processing.
+// When used with Objects, the callback function will never be called again (e.g. after it received the required data).
+var ErrStop = errors.New("stop processing json")
 
 // JSONCallback is the callback function passed to Reader and ObjectOptions.
 //

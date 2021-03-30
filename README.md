@@ -95,6 +95,7 @@ results in
 * Another example of unsupported number types are the float values `Inf`, `+Inf`, `-Inf` and other infinity values. While `NaN` is converted to `null` (as `NaN` is not valid JSON), infinity values don't have an appropriate JSON representation.
 
 ### Changelog
+* **v1.5.1**: `Objects` now also goes through all child elements of a matched element 
 * **v1.5.0**: `Objects` now terminates early if all callback functions are satisfied. To indicate this you can return `ErrStop` from an `ObjectOption`'s callback, which will make sure that this function is not called again.
 * **v1.4.4**: `Objects`: Add `Required` field that controls if an error should be returned if the object was not found. This makes it more convenient to use this function as no further checks are needed after extracting objects.
 * **v1.4.3**: Convert floats with trailing dots to valid JSON, e.g. a `1.` is converted to `1.0` as the first one isn't valid JSON

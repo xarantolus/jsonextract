@@ -52,7 +52,8 @@ func (s *ObjectOption) match(m map[string]rawMessageNoCopy) bool {
 	return true
 }
 
-// ErrCallbackNeverCalled is returned from Objects if the callback of a required ObjectOption was never satisfied
+// ErrCallbackNeverCalled is returned from the Objects method if the callback of a required ObjectOption was never satisfied,
+// which means that the callback never returned ErrStop.
 var ErrCallbackNeverCalled = errors.New("callback never called")
 
 // Objects extracts all nested objects and passes them to appropriate callback functions.
@@ -106,7 +107,6 @@ func Objects(r io.Reader, o []ObjectOption) (err error) {
 				}
 
 				if opt.match(m) {
-					// If an object matched, we no longer care about its child elements
 					oerr := opt.Callback(b)
 					if oerr == ErrStop {
 						// Mark this callback function as done
@@ -118,10 +118,11 @@ func Objects(r io.Reader, o []ObjectOption) (err error) {
 							return ErrStop
 						}
 
-						// Make sure don't terminate too early
+						// Make sure we don't terminate too early
 						oerr = nil
+					} else if oerr != nil {
+						return oerr
 					}
-					return oerr
 				}
 			}
 

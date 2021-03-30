@@ -128,33 +128,6 @@ func TestObjects(t *testing.T) {
 				`{"key1":"asdf","key3":"ghijk"}`: 1,
 			},
 		},
-		{
-			`{
-			 "slideshow": {
-			   "author": "Yours Truly",
-			   "date": "date of publication",
-			   "slides": [
-			     {
-			       "key1": "Wake up to WonderWidgets!",
-			       "key2": "all"
-			     },
-			     {
-			       "key3": [
-			         "Why <em>WonderWidgets</em> are great",
-			         "Who <em>buys</em> WonderWidgets"
-			       ],
-			       "key1": "Overview",
-			       "key2": "all"
-			     }
-			   ],
-			    "title": "Sample Slide Show"
-			  }
-			}`,
-			map[string]int{
-				`{"key1":"Wake up to WonderWidgets!","key2":"all"}`:                                                                  0,
-				`{"key3":["Why <em>WonderWidgets</em> are great","Who <em>buys</em> WonderWidgets"],"key1":"Overview","key2":"all"}`: 0,
-			},
-		},
 	}
 
 	for _, tt := range tests {
@@ -197,6 +170,52 @@ func TestObjects(t *testing.T) {
 				t.Errorf("Called callbacks %d times, but wanted %d", calls, len(tt.expected))
 			}
 		})
+	}
+}
+
+func TestMultiChild(t *testing.T) {
+	var data = `{
+			key1: {
+				key1: {
+					key1: {
+						key2: {
+							key1: "test"
+						},
+						key1: [
+							"aaa"
+						]
+					}
+				},
+				key2: "test"
+			}
+		}`
+
+	var firstCount, secondCount int
+	err := Objects(strings.NewReader(data), []ObjectOption{
+		{
+			Keys: []string{"key1"},
+			Callback: func(b []byte) error {
+				firstCount++
+				return nil
+			},
+		},
+		{
+			Keys: []string{"key2"},
+			Callback: func(b []byte) error {
+				secondCount++
+				return nil
+			},
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	if firstCount != 5 {
+		t.Errorf("Expected key1 to be found five times, was found %d times", firstCount)
+	}
+	if secondCount != 2 {
+		t.Errorf("Expected key2 to be found two times, was found %d times", firstCount)
 	}
 }
 
