@@ -104,6 +104,69 @@ func TestObjectsSatisfied(t *testing.T) {
 	}
 }
 
+func TestObjectsFirstMatchingOptionOnly(t *testing.T) {
+	var data = `{key1: "a", a: {key1: "b", key2: 2}}`
+
+	var calls = map[int]int{0: 0, 1: 0}
+
+	var cb = func(i int) JSONCallback {
+		return func(b []byte) error {
+			calls[i]++
+			return nil
+		}
+	}
+
+	err := Objects(strings.NewReader(data), []ObjectOption{
+		{
+			Keys:     []string{"key1"},
+			Callback: cb(0),
+		},
+		{
+			// Usually one would cascade this the other way around, e.g. the one with more keys is the first option
+			Keys:     []string{"key1", "key2"},
+			Callback: cb(1),
+		},
+	})
+	if err != nil {
+		panic("unexpected error: " + err.Error())
+	}
+
+	if calls[0] != 2 || calls[1] != 0 {
+		t.Errorf("unexpected count of callbacks when specifying key multiple times")
+	}
+}
+
+func TestObjectsCascade(t *testing.T) {
+	var data = `{key1: "a", a: {key1: "b", key2: 2}}`
+
+	var calls = map[int]int{0: 0, 1: 0}
+
+	var cb = func(i int) JSONCallback {
+		return func(b []byte) error {
+			calls[i]++
+			return nil
+		}
+	}
+
+	err := Objects(strings.NewReader(data), []ObjectOption{
+		{
+			Keys:     []string{"key1", "key2"},
+			Callback: cb(1),
+		},
+		{
+			Keys:     []string{"key1"},
+			Callback: cb(0),
+		},
+	})
+	if err != nil {
+		panic("unexpected error: " + err.Error())
+	}
+
+	if calls[0] != 1 || calls[1] != 1 {
+		t.Errorf("unexpected count of callbacks during Objects cascade")
+	}
+}
+
 func TestObjects(t *testing.T) {
 	tests := []struct {
 		json     string
@@ -184,6 +247,12 @@ func TestMultiChild(t *testing.T) {
 						key1: [
 							"aaa"
 						]
+					},
+					key3: {
+						key2: 15,
+						key3: {
+							key2: 7
+						}
 					}
 				},
 				key2: "test"
@@ -215,7 +284,7 @@ func TestMultiChild(t *testing.T) {
 		t.Errorf("Expected key1 to be found five times, was found %d times", firstCount)
 	}
 	if secondCount != 2 {
-		t.Errorf("Expected key2 to be found two times, was found %d times", firstCount)
+		t.Errorf("Expected key2 to be found two times, was found %d times", secondCount)
 	}
 }
 

@@ -61,7 +61,8 @@ var ErrCallbackNeverCalled = errors.New("callback never called")
 //
 // This method will check not just top-level object keys, but also those of all child objects.
 //
-// If multiple options would match, only the first one will be processed.
+// If multiple options would match, only the first one will be processed. This allows you to cascade options
+// to first extract objects with the most keys, then those with less (which is useful if there are overlapping keys).
 //
 // If a required option is not matched, ErrCallbackNeverCalled will be returned.
 //
@@ -123,6 +124,9 @@ func Objects(r io.Reader, o []ObjectOption) (err error) {
 					} else if oerr != nil {
 						return oerr
 					}
+
+					// Since only the first option that matches should be called
+					break
 				}
 			}
 
