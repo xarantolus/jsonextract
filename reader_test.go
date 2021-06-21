@@ -222,6 +222,24 @@ var testData = []struct {
 	want []json.RawMessage
 }{
 	{
+		`var x = {n: +NaN}`,
+		[]json.RawMessage{
+			[]byte(`{"n":null}`),
+		},
+	},
+	{
+		`var x = {n: -NaN}`,
+		[]json.RawMessage{
+			[]byte(`{"n":null}`),
+		},
+	},
+	{
+		`var x = {n: NaN}`,
+		[]json.RawMessage{
+			[]byte(`{"n":null}`),
+		},
+	},
+	{
 		// This was found using https://github.com/dvyukov/go-fuzz
 		"[`",
 		nil,

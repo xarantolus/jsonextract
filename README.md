@@ -71,6 +71,9 @@ var x = {
 	// NaN will be converted to null. Infinity values are however not supported
 	"num2": NaN,
 
+	// No matter the sign, NaN becomes null
+	"num3": -NaN,
+
 	// Undefined will be interpreted as null
 	"udef": undefined,
 
@@ -83,7 +86,7 @@ no problem`
 results in
 
 ```json
-{"key":"value","num":295.2,"obj":{"quoted":325,"other quotes":true,"unquoted":"test"},"dec":21,"hex":21,"oct":21,"bin":21,"bigint":21,"num2":null,"udef":null,"lastvalue":"multiline strings are\nno problem"}
+{"key":"value","num":295.2,"obj":{"quoted":325,"other quotes":true,"unquoted":"test"},"dec":21,"hex":21,"oct":21,"bin":21,"bigint":21,"num2":null,"num3":null,"udef":null,"lastvalue":"multiline strings are\nno problem"}
 ```
 
 
@@ -95,6 +98,7 @@ results in
 * Another example of unsupported number types are the float values `Inf`, `+Inf`, `-Inf` and other infinity values. While `NaN` is converted to `null` (as `NaN` is not valid JSON), infinity values don't have an appropriate JSON representation.
 
 ### Changelog
+* **v1.5.3**: Support signed `+NaN` and `-NaN` by converting them to `null`, just like the normal `NaN`
 * **v1.5.2**: `Objects` now behaves as documented and only matches the first option found. This is useful for cascading options from the most keys to the least keys you want, which is useful if there is some overlap. 
 * **v1.5.1**: `Objects` now also goes through all child elements of a matched element 
 * **v1.5.0**: `Objects` now terminates early if all callback functions are satisfied. To indicate this you can return `ErrStop` from an `ObjectOption`'s callback, which will make sure that this function is not called again.

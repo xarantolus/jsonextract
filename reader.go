@@ -319,6 +319,11 @@ loop:
 			// Certain keywords are reserved in JSON. As a special case,
 			// we replace "undefined" with "null"
 			if val, ok := jsIdentifiers[string(text)]; ok {
+				// Another special case: this handles stuff like -NaN, which would
+				// result in "-null", which is invalid JSON
+				if lastByte == '+' || lastByte == '-' {
+					buf.Truncate(buf.Len() - 1)
+				}
 				buf.Write(val)
 			} else {
 				// This is reached if we have an unquoted key in an object, e.g.
