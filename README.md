@@ -9,7 +9,7 @@ There's a small extractor program that uses this library to get data from URLs a
 
 If you want to give it a try, you can just go-get it:
 
-    go get -u github.com/xarantolus/jsonextract/cmd/jsonx
+    go install github.com/xarantolus/jsonextract/cmd/jsonx@latest
 
 You can use it both on files and URLs like this:
 
