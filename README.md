@@ -98,9 +98,10 @@ results in
 * Another example of unsupported number types are the float values `Inf`, `+Inf`, `-Inf` and other infinity values. While `NaN` is converted to `null` (as `NaN` is not valid JSON), infinity values don't have an appropriate JSON representation.
 
 ### Changelog
+* **v1.5.4**: Update underlying library, fix compilation due to breaking dependency change
 * **v1.5.3**: Support signed `+NaN` and `-NaN` by converting them to `null`, just like the normal `NaN`
-* **v1.5.2**: `Objects` now behaves as documented and only matches the first option found. This is useful for cascading options from the most keys to the least keys you want, which is useful if there is some overlap. 
-* **v1.5.1**: `Objects` now also goes through all child elements of a matched element 
+* **v1.5.2**: `Objects` now behaves as documented and only matches the first option found. This is useful for cascading options from the most keys to the least keys you want, which is useful if there is some overlap.
+* **v1.5.1**: `Objects` now also goes through all child elements of a matched element
 * **v1.5.0**: `Objects` now terminates early if all callback functions are satisfied. To indicate this you can return `ErrStop` from an `ObjectOption`'s callback, which will make sure that this function is not called again.
 * **v1.4.4**: `Objects`: Add `Required` field that controls if an error should be returned if the object was not found. This makes it more convenient to use this function as no further checks are needed after extracting objects.
 * **v1.4.3**: Convert floats with trailing dots to valid JSON, e.g. a `1.` is converted to `1.0` as the first one isn't valid JSON
@@ -128,7 +129,7 @@ results in
 Thanks to everyone who made [the `parse` package](https://github.com/tdewolff/parse) possible. Without it, creating this extractor would have been a lot harder.
 
 ### Contributing
-Please feel free to open issues for anything that doesn't seem right, even small stuff. 
+Please feel free to open issues for anything that doesn't seem right, even small stuff.
 
 ### [License](LICENSE)
 This is free as in freedom software. Do whatever you like with it.

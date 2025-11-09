@@ -446,7 +446,7 @@ loop:
 			}
 
 			switch tt {
-			case js.BigIntToken:
+			case js.IntegerToken:
 				// BigIntegers can be written e.g. as "50n", "0x5n" etc.
 				text = bytes.TrimSuffix(text, []byte("n"))
 				fallthrough
