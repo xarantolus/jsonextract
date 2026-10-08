@@ -2,42 +2,33 @@ package fuzz
 
 import (
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
-	"testing"
 )
 
-func TestGenerateFiles(t *testing.T) {
-	// Running in GitHub actions? Skip this
-	if os.Getenv("CI") == "true" {
-		t.Skip()
-	}
-
-	t.Helper()
-
-	err := os.MkdirAll("corpus", 0644)
-	if err != nil {
-		panic(err)
-	}
-
-	for i, d := range fuzzData {
-		err = ioutil.WriteFile(fmt.Sprintf("corpus/%d.txt", i), []byte(d.arg), 0o644)
-		if err != nil {
-			panic(err)
-		}
-
-		for j, d2 := range d.want {
-			err = ioutil.WriteFile(fmt.Sprintf("corpus/%d-%d.txt", i, j), []byte(d2), 0o644)
-			if err != nil {
-				panic(err)
-			}
+// seeds returns the inputs and expected outputs of fuzzData as seeds for fuzzing.
+// Locally available files in the corpus directory (which is not committed) are also added.
+func seeds() (out [][]byte) {
+	for _, d := range fuzzData {
+		out = append(out, []byte(d.arg))
+		for _, w := range d.want {
+			out = append(out, w)
 		}
 	}
+
+	files, _ := filepath.Glob("corpus/*")
+	for _, file := range files {
+		input, err := os.ReadFile(file)
+		if err == nil && len(input) <= 4096 {
+			out = append(out, input)
+		}
+	}
+	return
 }
 
-// Same as testData in reader_test.go
+// fuzzData is a copy of testData in reader_test.go from before v1.6.0.
+// It contains many edge cases, which makes it a good starting point for fuzzing
 var fuzzData = []struct {
 	arg  string
 	want []json.RawMessage

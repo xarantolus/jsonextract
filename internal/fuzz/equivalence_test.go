@@ -72,6 +72,14 @@ func checkEquivalent(t *testing.T, input []byte) {
 	}
 }
 
+func TestEquivalenceSeeds(t *testing.T) {
+	for i, s := range seeds() {
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			checkEquivalent(t, s)
+		})
+	}
+}
+
 func TestEquivalenceFiles(t *testing.T) {
 	files, err := filepath.Glob("../../testdata/*")
 	if err != nil {
