@@ -91,13 +91,13 @@ results in
 
 
 ### Notes
-* While the functions take an `io.Reader` and stream data from it without buffering everything in memory, the underlying JS lexer uses `ioutil.ReadAll`. That means that this won't work well on files that are larger than memory.
-* It is possible to craft input in a way that will require the parser to revert a lot, which will take more time. One such input is repeating opening braces for arrays `[` without closing them, after more than a few thousand it gets noticeably slow.
+* While the input is streamed, each object is kept in memory until it is complete. The same goes for unclosed brackets (`[[[[...`), as they might still start an object.
 * When extracting objects from JavaScript files using [`Reader`](https://pkg.go.dev/github.com/xarantolus/jsonextract#Reader), you can end up with many arrays that look like `[0]`, `[1]`, `["i"]`, which is a result of indices being used in the script. You have to filter these out yourself.
 * While this package supports most number formats, there are some that don't work because the lexer doesn't support them. One of those is underscores in numbers. An example is that in JavaScript `2175` can be written as `2_175` or `0x8_7_f`, but that doesn't work here (normal HEX numbers do however). Another example are numbers with a leading zero; they are rejected by the lexer because it's not clear if they should be interpreted as octal or decimal.
 * Another example of unsupported number types are the float values `Inf`, `+Inf`, `-Inf` and other infinity values. While `NaN` is converted to `null` (as `NaN` is not valid JSON), infinity values don't have an appropriate JSON representation.
 
 ### Changelog
+* **v1.6.0**: Extraction now runs in linear time and streams the input instead of reading all of it into memory. Also fixes brackets inside of regular expressions being extracted twice.
 * **v1.5.4**: Update underlying library, fix compilation due to breaking dependency change
 * **v1.5.3**: Support signed `+NaN` and `-NaN` by converting them to `null`, just like the normal `NaN`
 * **v1.5.2**: `Objects` now behaves as documented and only matches the first option found. This is useful for cascading options from the most keys to the least keys you want, which is useful if there is some overlap.
