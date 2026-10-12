@@ -55,7 +55,6 @@ func BenchmarkObjectsPlaylist(b *testing.B) {
 
 	b.SetBytes(int64(len(input)))
 	b.ReportAllocs()
-	// Reusing the reader makes sure allocations of the library are measured, not those of the benchmark
 	var r = bytes.NewReader(input)
 	b.ResetTimer()
 
@@ -70,7 +69,6 @@ func BenchmarkObjectsPlaylist(b *testing.B) {
 func benchmarkReader(b *testing.B, input []byte) {
 	b.SetBytes(int64(len(input)))
 	b.ReportAllocs()
-	// Reusing the reader makes sure allocations of the library are measured, not those of the benchmark
 	var r = bytes.NewReader(input)
 	b.ResetTimer()
 

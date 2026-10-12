@@ -27,8 +27,7 @@ func seeds() (out [][]byte) {
 	return
 }
 
-// fuzzData is a copy of testData in reader_test.go from before v1.6.0.
-// It contains many edge cases, which makes it a good starting point for fuzzing
+// fuzzData contains many edge cases, which makes it a good starting point for fuzzing
 var fuzzData = []struct {
 	arg  string
 	want []json.RawMessage

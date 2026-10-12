@@ -158,8 +158,11 @@ func (c *converter) convert(out []byte, tt js.TokenType, text []byte) (_ []byte,
 
 // marshalString returns s as JSON string
 func marshalString(s string) []byte {
-	// Marshalling a string cannot fail, invalid UTF-8 is replaced
-	b, _ := json.Marshal(s)
+	b, err := json.Marshal(s)
+	if err != nil {
+		// Marshalling a string cannot fail, invalid UTF-8 is replaced
+		panic(err)
+	}
 	return b
 }
 
