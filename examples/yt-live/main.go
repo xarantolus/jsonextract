@@ -28,7 +28,7 @@ var c = http.Client{
 	Timeout: 10 * time.Second,
 }
 
-const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:86.0) Gecko/20100101 Firefox/86.0"
+const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0"
 
 // This struct only contains minimal info, there is more but I don't care about other info we can get
 type liveVideo struct {
