@@ -1,7 +1,6 @@
 package jsonextract
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -15,6 +14,7 @@ import (
 	"strings"
 	"testing"
 	"testing/iotest"
+	"time"
 )
 
 func TestReader(t *testing.T) {
@@ -145,6 +145,74 @@ func TestReaderErr(t *testing.T) {
 
 	if rerr == nil || cbCount != 1 {
 		t.Errorf("Expected Reader to return error after exactly one callback")
+	}
+}
+
+func TestReaderErrInsideObject(t *testing.T) {
+	var testErr = errors.New("test error")
+
+	// The error happens while an object is being read, e.g. inside of a token
+	for _, input := range []string{`{} {"a": [1, 2`, `{} {"a": "abc`, `{} {a: tru`, `{} [   `} {
+		var calls int
+		err := Reader(io.MultiReader(strings.NewReader(input), iotest.ErrReader(testErr)), func(b []byte) error {
+			calls++
+			return nil
+		})
+		if err != testErr {
+			t.Errorf("Reader(%q) returned error %v, want %v", input, err, testErr)
+		}
+		if calls != 1 {
+			t.Errorf("Reader(%q) called callback %d times, want 1", input, calls)
+		}
+	}
+}
+
+// Objects must be passed to the callback as soon as they are complete, not only when more data arrives
+func TestReaderStreaming(t *testing.T) {
+	pr, pw := io.Pipe()
+
+	var (
+		objects = make(chan string)
+		done    = make(chan error)
+	)
+	go func() {
+		done <- Reader(pr, func(b []byte) error {
+			objects <- string(b)
+			return nil
+		})
+	}()
+
+	for _, obj := range []string{`{"a": 1}`, `[1, 2, 3]`, `{b: 'c'}`} {
+		go func(obj string) {
+			_, _ = pw.Write([]byte("text before " + obj))
+		}(obj)
+
+		select {
+		case got := <-objects:
+			if !json.Valid([]byte(got)) {
+				t.Errorf("got invalid JSON %q", got)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatalf("callback was not called for %q before more data was written", obj)
+		}
+	}
+
+	pw.Close()
+	if err := <-done; err != nil {
+		t.Errorf("Reader returned unexpected error %v", err)
+	}
+}
+
+// Many failed candidates, which fills the internal memo for nested brackets
+func TestReaderManyCandidates(t *testing.T) {
+	var input = strings.Repeat("[", 3000) + "{a: 1}" + strings.Repeat("{x: [", 3000) + "[2]" + strings.Repeat("[", 3000) + "]"
+	got, err := readerObjects(strings.NewReader(input))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want = []string{`{"a":1}`, `[2]`, `[]`}
+	if !reflect.DeepEqual(convert(got), want) {
+		t.Errorf("readerObjects() = %v, want %v", convert(got), want)
 	}
 }
 
@@ -409,6 +477,29 @@ var testData = []struct {
 		`let re = [/ab+c/];`,
 		[]json.RawMessage{
 			[]byte(`["/ab+c/"]`),
+		},
+	},
+	{
+		// Structural tokens in the wrong place make the surrounding objects invalid
+		`[1:2] {"a" "b"} {"a": 1 "b": 2} {"a": 1,, "b": 2} [1,,2] {a,} {a:} [,1] [-] [+] {,} [,]`,
+		[]json.RawMessage{
+			[]byte(`{}`),
+			[]byte(`[]`),
+		},
+	},
+	{
+		// Separate tokens can form one JSON number in the output (found by fuzzing)
+		`[0B0. 0 ] [0x1 . 5e3]`,
+		[]json.RawMessage{
+			[]byte(`[0.0]`),
+			[]byte(`[1.5e3]`),
+		},
+	},
+	{
+		// Brackets inside of a regex that is part of an extracted object must not be extracted again
+		`let re = [/a[1]b/, /{}/];`,
+		[]json.RawMessage{
+			[]byte(`["/a[1]b/","/{}/"]`),
 		},
 	},
 	{
@@ -790,108 +881,6 @@ var readerTestData = []struct {
 		"[1,2,3,4,5,6,7,8,9,10];",
 		"[1,2,3,4,5,6,7,8,9,10]",
 	},
-}
-
-func TestResettableRuneBuffer(t *testing.T) {
-	for _, tt := range readerTestData {
-		t.Run(t.Name(), func(t *testing.T) {
-			var r = newResettableBuffer(strings.NewReader(tt.input))
-
-			r.MarkStart()
-
-			err := iotest.TestReader(r, []byte(tt.input))
-			if err != nil {
-				t.Errorf("Invalid resettableRuneBuffer implementation (initial read): %s", err.Error())
-			}
-
-			err = r.ReturnAndSkip(len(tt.input) / 2)
-			if err != nil {
-				panic(err)
-			}
-
-			r.MarkEnd()
-
-			err = iotest.TestReader(r, []byte(tt.input[len(tt.input)/2:]))
-			if err != nil {
-				t.Errorf("Invalid resettableRuneBuffer implementation (after returning): %s", err.Error())
-			}
-		})
-	}
-
-	t.Run("can reset multiple times", func(t *testing.T) {
-		var input = strings.Repeat("abcde", 50)
-
-		var r = newResettableBuffer(bufio.NewReaderSize(strings.NewReader(input), 32))
-
-		// Throw away 2 bytes, now we should start at "cde"
-		_, err := io.CopyN(io.Discard, r, 2)
-		if err != nil {
-			t.Errorf("unexpected copy fail: %v", err)
-		}
-
-		r.MarkStart()
-
-		n, err := io.CopyN(io.Discard, r, 202)
-		if err != nil {
-			t.Errorf("unexpected copy fail: %v", err)
-		}
-		if n != 202 {
-			t.Errorf("only read %d bytes even though more are available", n)
-		}
-
-		// Now we should be able to read "eab"
-		var b2 = make([]byte, 3)
-
-		n2, err := r.Read(b2)
-		if err != nil {
-			t.Errorf("unexpected read fail: %v", err)
-		}
-		if n2 != len(b2) {
-			t.Errorf("didn't fill the entire buffer b2 even though there should be data available")
-		}
-		if !bytes.Equal(b2, []byte(`eab`)) {
-			t.Errorf("buffer returned wrong data")
-		}
-
-		// Reset the buffer. We should now be at "cde" again, but we skip one rune, which
-		// means that the start should now be "de"
-		err = r.ReturnAndSkipOne()
-		if err != nil {
-			t.Errorf("unexpected reset fail: %v", err)
-		}
-
-		var b3 = make([]byte, 64)
-		n3, err := r.Read(b3)
-		if err != nil {
-			t.Errorf("unexpected read fail: %v", err)
-		}
-		if n3 != len(b3) {
-			t.Errorf("didn't fill the entire buffer b3 even though there should be data available")
-		}
-
-		if !bytes.HasPrefix(b3, []byte("deabcde")) {
-			t.Errorf("b3 read returned wrong data")
-		}
-
-		// Reset again. We reset to "de...", but now we skip a few more bytes in the process
-		err = r.ReturnAndSkip(32)
-		if err != nil {
-			t.Errorf("unexpected second reset fail: %v", err)
-		}
-
-		var b4 = make([]byte, 5)
-		n4, err := r.Read(b4)
-		if err != nil {
-			t.Errorf("unexpected read fail: %v", err)
-		}
-		if n4 != len(b4) {
-			t.Errorf("didn't fill the entire buffer b4 even though there should be data available")
-		}
-
-		if !bytes.Equal(b4, []byte("abcde")) {
-			t.Errorf("b4 read returned wrong data")
-		}
-	})
 }
 
 // Test to check if the example program still works
